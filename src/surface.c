@@ -24,6 +24,8 @@
 // enables redraw via blt/unlock if there wasn't any flip for X ms
 #define FLIP_REDRAW_TIMEOUT 1000 / 10
 
+struct IDirectDrawSurfaceImplVtbl IDirectDrawSurfaceImplVtbl;
+
 void dump_ddbltflags(DWORD dwFlags);
 void dump_ddscaps(DWORD dwCaps);
 void dump_ddsd(DWORD dwFlags);
@@ -453,15 +455,15 @@ HRESULT __stdcall ddraw_surface_Blt(IDirectDrawSurfaceImpl *This, LPRECT lpDestR
     {
         InterlockedExchange(&ddraw->render.surfaceUpdated, TRUE);
         ReleaseSemaphore(ddraw->render.sem, 1, NULL);
-        if (ddraw->renderer == render_soft_main)
-        {
+        /* if (ddraw->renderer == render_soft_main)
+        { */
             WaitForSingleObject(ddraw->render.ev, INFINITE);
             ResetEvent(ddraw->render.ev);
-        }
+        /* }
         else
         {
             SwitchToThread();
-        }
+        } */
 
         if (ddraw->ticksLimiter.ticklength > 0)
         {
@@ -684,17 +686,17 @@ HRESULT __stdcall ddraw_surface_Flip(IDirectDrawSurfaceImpl *This, LPDIRECTDRAWS
 
         InterlockedExchange(&ddraw->render.surfaceUpdated, TRUE);
         
-        if (ddraw->renderer == render_soft_main)
-        {
+        /* if (ddraw->renderer == render_soft_main)
+        { */
             ResetEvent(ddraw->render.ev);
             ReleaseSemaphore(ddraw->render.sem, 1, NULL);
             WaitForSingleObject(ddraw->render.ev, INFINITE);
-        }
+        /* }
         else
         {
             ReleaseSemaphore(ddraw->render.sem, 1, NULL);
             SwitchToThread();
-        }
+        } */
 
         if (flags & DDFLIP_WAIT)
         {
@@ -1140,14 +1142,14 @@ HRESULT __stdcall ddraw_CreateSurface(IDirectDrawImpl *This, LPDDSURFACEDESC lpD
         }
 
         Surface->lXPitch = Surface->bpp / 8;
-        Surface->lPitch = Surface->width * Surface->lXPitch;
+        Surface->lPitch = (Surface->width * Surface->lXPitch + 3) & ~3;
 
         Surface->hDC = CreateCompatibleDC(ddraw->render.hDC);
         Surface->bitmap = CreateDIBSection(Surface->hDC, Surface->bmi, DIB_RGB_COLORS, (void **)&Surface->surface, NULL, 0);
         Surface->bmi->bmiHeader.biHeight = -Surface->height;
 
         if (!Surface->bitmap)
-            Surface->surface = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, Surface->lPitch * (Surface->height + 200) * Surface->lXPitch);
+            Surface->surface = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, Surface->lPitch * (Surface->height + 200));
 
         SelectObject(Surface->hDC, Surface->bitmap);
     }

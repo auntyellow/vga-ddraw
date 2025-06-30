@@ -34,7 +34,7 @@ typedef struct IDirectDrawClipperImpl
 
 } IDirectDrawClipperImpl;
 
-struct IDirectDrawClipperImplVtbl
+extern struct IDirectDrawClipperImplVtbl
 {
     /* IUnknown */
     HRESULT (__stdcall *QueryInterface)(IDirectDrawClipperImpl *, REFIID, void **);

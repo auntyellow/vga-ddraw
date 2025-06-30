@@ -35,7 +35,7 @@ typedef struct IDirectDrawPaletteImpl
 
 } IDirectDrawPaletteImpl;
 
-struct IDirectDrawPaletteImplVtbl
+extern struct IDirectDrawPaletteImplVtbl
 {
     /* IUnknown */
     HRESULT (__stdcall *QueryInterface)(IDirectDrawPaletteImpl*, REFIID, void**);

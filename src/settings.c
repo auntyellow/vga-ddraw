@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <d3d9.h>
 #include "main.h"
-#include "opengl.h"
-#include "render_d3d9.h"
+// #include "opengl.h"
+// #include "render_d3d9.h"
 
 static char SettingsIniPath[MAX_PATH];
 static char ProcessFileName[96];
@@ -31,7 +31,7 @@ void Settings_Load()
     _splitpath(ProcessFilePath, NULL, NULL, ProcessFileName, NULL);
 
     //load settings from ini
-    ddraw->windowed = GetBool("windowed", FALSE);
+    // ddraw->windowed = GetBool("windowed", FALSE);
     ddraw->border = GetBool("border", TRUE);
     ddraw->boxing = GetBool("boxing", FALSE);
     ddraw->maintas = GetBool("maintas", FALSE);
@@ -39,7 +39,7 @@ void Settings_Load()
     ddraw->devmode = GetBool("devmode", FALSE);
     ddraw->vsync = GetBool("vsync", FALSE);
     ddraw->noactivateapp = GetBool("noactivateapp", FALSE);
-    ddraw->vhack = GetBool("vhack", FALSE);
+    // ddraw->vhack = GetBool("vhack", FALSE);
     ddraw->accurateTimers = GetBool("accuratetimers", FALSE);
 
     WindowRect.right = GetInt("width", 0);
@@ -79,6 +79,7 @@ void Settings_Load()
     if (!(ddraw->handlemouse = GetBool("handlemouse", TRUE)))
         ddraw->adjmouse = TRUE;
 
+    /*
     if (GetBool("singlecpu", TRUE))
     {
         SetProcessAffinityMask(GetCurrentProcess(), 1);
@@ -91,6 +92,7 @@ void Settings_Load()
         if (GetProcessAffinityMask(proc, &procAffinity, &systemAffinity))
             SetProcessAffinityMask(proc, systemAffinity);
     }
+    */
 
     ddraw->render.bpp = GetInt("bpp", 32);
     if (ddraw->render.bpp != 16 && ddraw->render.bpp != 24 && ddraw->render.bpp != 32)
@@ -102,6 +104,8 @@ void Settings_Load()
     GetString("renderer", "auto", tmp, sizeof(tmp));
     printf("Using %s renderer\n", tmp);
 
+    ddraw->renderer = render_soft_main;
+    /*
     if (tolower(tmp[0]) == 's' || tolower(tmp[0]) == 'g') //gdi
     {
         ddraw->renderer = render_soft_main;
@@ -150,6 +154,7 @@ void Settings_Load()
             ddraw->renderer = render_soft_main;
         }
     }
+    */
 }
 
 void Settings_Save(RECT *lpRect, int windowState)
@@ -380,8 +385,9 @@ static void CreateSettingsIni()
 static DWORD GetString(LPCSTR key, LPCSTR defaultValue, LPSTR outString, DWORD outSize)
 {
     DWORD s = GetPrivateProfileStringA(ProcessFileName, key, "", outString, outSize, SettingsIniPath);
-    if (s > 0)
+    if (s > 0) {
         return s;
+    }
 
 	return GetPrivateProfileStringA("ddraw", key, defaultValue, outString, outSize, SettingsIniPath);
 }

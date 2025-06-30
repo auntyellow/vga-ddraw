@@ -19,7 +19,7 @@
 
 #include "main.h"
 #include "surface.h"
-#include "opengl.h"
+// #include "opengl.h"
 
 BOOL ShowDriverWarning;
 
@@ -29,13 +29,13 @@ DWORD WINAPI render_soft_main(void)
     char warningText[512] = { 0 };
     if (ShowDriverWarning)
     {
-        if (!ddraw->windowed)
+        // if (!ddraw->windowed)
             PostMessage(ddraw->hWnd, WM_AUTORENDERER, 0, 0);
 
         _snprintf(
             warningText, sizeof(warningText), 
             "-WARNING- Using slow software rendering, please update your graphics card driver (%s)", 
-            strlen(OpenGL_Version) > 10 ? "" : OpenGL_Version);
+            ""); // strlen(OpenGL_Version) > 10 ? "" : OpenGL_Version);
     }
     else
         Sleep(500);
@@ -79,7 +79,7 @@ DWORD WINAPI render_soft_main(void)
 
         EnterCriticalSection(&ddraw->cs);
 
-        if (ddraw->primary && (ddraw->bpp == 16 || (ddraw->primary->palette && ddraw->primary->palette->data_rgb)))
+        if (ddraw->primary /*&& (ddraw->bpp == 16 || (ddraw->primary->palette && ddraw->primary->palette->data_rgb))*/)
         {
             if (warningText[0])
             {
@@ -92,6 +92,52 @@ DWORD WINAPI render_soft_main(void)
                     warningText[0] = 0;
             }
 
+            if (InterlockedExchange(&ddraw->render.paletteUpdated, FALSE)) {
+                if (ddraw->primary->palette && ddraw->primary->palette->data_rgb && ddraw->render.hDC) {
+                    if (ddraw->render.hDPal != INVALID_HANDLE_VALUE) {
+                        DWORD written;
+                        BOOL success = WriteFile(ddraw->render.hDPal, ddraw->primary->palette->data_bgr, 1024, &written, NULL);
+                        if (success) {
+                            printf("Wrote %d bytes into VGA palette\n", written);
+                        } else {
+                            printf("Error %d: Write palette failed\n", GetLastError());
+                        }
+                    }
+                    if (ddraw->render.winVer >= 5) {
+                        RGBQUAD *rgb = ddraw->primary->palette->data_rgb;
+                        if (ddraw->render.hPalette) {
+                            PALETTEENTRY pe[256];
+                            for (int i = 0; i < 256; i++) {
+                                pe[i].peRed = rgb[i].rgbRed;
+                                pe[i].peGreen = rgb[i].rgbGreen;
+                                pe[i].peBlue = rgb[i].rgbBlue;
+                                pe[i].peFlags = PC_NOCOLLAPSE;
+                            }
+                            SetPaletteEntries(ddraw->render.hPalette, 0, 256, pe);
+                        } else {
+                            LOGPALETTE *pLogPal = (LOGPALETTE *) HeapAlloc(GetProcessHeap(), 0, sizeof(LOGPALETTE) + 255*sizeof(PALETTEENTRY));
+                            pLogPal->palVersion = 0x300;
+                            pLogPal->palNumEntries = 256;
+                            PALETTEENTRY *pe = pLogPal->palPalEntry;
+                            for (int i = 0; i < 256; i++) {
+                                pe[i].peRed = rgb[i].rgbRed;
+                                pe[i].peGreen = rgb[i].rgbGreen;
+                                pe[i].peBlue = rgb[i].rgbBlue;
+                                pe[i].peFlags = PC_NOCOLLAPSE;
+                            }
+                            ddraw->render.hPalette = CreatePalette(pLogPal);
+                            HeapFree(GetProcessHeap(), 0, pLogPal);
+                        }
+                        SetSystemPaletteUse(ddraw->render.hDC, SYSPAL_NOSTATIC256);
+                        SelectPalette(ddraw->render.hDC, ddraw->render.hPalette, FALSE);
+                        RealizePalette(ddraw->render.hDC);
+                        printf("Palette applied to render.hDC\n");
+                    }
+                }
+            }
+
+            // skip stretch to speed up
+            /*
             BOOL scaleCutscene = ddraw->vhack && detect_cutscene();
 
             if (ddraw->vhack)
@@ -137,8 +183,8 @@ DWORD WINAPI render_soft_main(void)
                     DIB_RGB_COLORS, 
                     SRCCOPY);
             }
-            else
-            {
+            */
+            if (ddraw->render.hDVGA == INVALID_HANDLE_VALUE) {
                 SetDIBitsToDevice(
                     ddraw->render.hDC, 
                     0, 
@@ -152,6 +198,14 @@ DWORD WINAPI render_soft_main(void)
                     ddraw->primary->surface, 
                     ddraw->primary->bmi, 
                     DIB_RGB_COLORS);
+            } else {
+                DWORD written;
+                BOOL success = WriteFile(ddraw->render.hDVGA, ddraw->primary->surface, ddraw->height*ddraw->primary->lPitch, &written, NULL);
+                if (success) {
+                    // printf("Wrote %d bytes\n", written);
+                } else {
+                    printf("Error %d: Write failed\n", GetLastError());
+                }
             } 
         }
 

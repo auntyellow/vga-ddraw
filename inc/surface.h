@@ -54,7 +54,7 @@ typedef struct IDirectDrawSurfaceImpl
 
 } IDirectDrawSurfaceImpl;
 
-struct IDirectDrawSurfaceImplVtbl
+extern struct IDirectDrawSurfaceImplVtbl
 {
     /* IUnknown */
     HRESULT (__stdcall *QueryInterface)(IDirectDrawSurfaceImpl*, REFIID, void**);

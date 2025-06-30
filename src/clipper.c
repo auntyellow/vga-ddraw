@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include "clipper.h"
 
+struct IDirectDrawClipperImplVtbl IDirectDrawClipperImplVtbl;
+
 HRESULT __stdcall ddraw_clipper_QueryInterface(IDirectDrawClipperImpl *This, REFIID riid, void **obj)
 {
     printf("DirectDrawClipper::QueryInterface(This=%p, riid=%08X, obj=%p) ???\n", This, (unsigned int)riid, obj);

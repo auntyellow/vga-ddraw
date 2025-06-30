@@ -18,16 +18,16 @@
 #include <windowsx.h>
 #include <winuser.h>
 #include <stdio.h>
-#include <ctype.h>
-#include <d3d9.h>
+// #include <ctype.h>
+// #include <d3d9.h>
 #include <initguid.h>
 #include "ddraw.h"
 #include "main.h"
-#include "opengl.h"
+// #include "opengl.h"
 #include "palette.h"
 #include "surface.h"
 #include "clipper.h"
-#include "render_d3d9.h"
+// #include "render_d3d9.h"
 
 #define IDR_MYMENU 93
 
@@ -36,7 +36,12 @@ void mouse_init();
 void mouse_lock();
 void mouse_unlock();
 
-BOOL screenshot(struct IDirectDrawSurfaceImpl *);
+/* screenshot.c removed */
+BOOL screenshot(struct IDirectDrawSurfaceImpl *)
+{
+    return TRUE;
+}
+
 void Settings_Load();
 void Settings_Save(RECT *lpRect, int windowState);
 void dinput_init();
@@ -45,7 +50,7 @@ IDirectDrawImpl *ddraw = NULL;
 
 RECT WindowRect = { .left = -32000, .top = -32000, .right = 0, .bottom = 0 };
 int WindowState = -1;
-BOOL Direct3D9Active;
+// BOOL Direct3D9Active;
 BOOL GameHandlesClose;
 BOOL ChildWindowExists;
 
@@ -129,6 +134,7 @@ BOOL CALLBACK EnumChildProc(HWND hWnd, LPARAM lParam)
     return FALSE;
 }
 
+/*
 static unsigned char getPixel(int x, int y)
 {
     return ((unsigned char *)ddraw->primary->surface)[y*ddraw->primary->lPitch + x*ddraw->primary->lXPitch];
@@ -158,6 +164,7 @@ BOOL detect_cutscene()
 
     return FALSE;
 }
+*/
 
 void LimitGameTicks()
 {
@@ -445,6 +452,7 @@ HRESULT __stdcall ddraw_RestoreDisplayMode(IDirectDrawImpl *This)
     }
 
     /* only stop drawing in GL mode when minimized */
+    /*
     if (This->renderer != render_soft_main)
     {
         EnterCriticalSection(&This->cs);
@@ -461,12 +469,13 @@ HRESULT __stdcall ddraw_RestoreDisplayMode(IDirectDrawImpl *This)
         if (This->renderer == render_d3d9_main)
             Direct3D9_Release();
     }
+    */
     
-    if(!ddraw->windowed)
+    /* if(!ddraw->windowed)
     {
-        if (!Direct3D9Active)
+        if (!Direct3D9Active) */
             ChangeDisplaySettings(&This->mode, 0);
-    }
+    // }
 
     return DD_OK;
 }
@@ -507,6 +516,7 @@ BOOL GetLowestResolution(float ratio, SIZE *outRes, DWORD minWidth, DWORD minHei
     return result;
 }
 
+/*
 void InitDirect3D9()
 {
     Direct3D9Active = Direct3D9_Create();
@@ -517,6 +527,7 @@ void InitDirect3D9()
         ddraw->renderer = render_soft_main;
     }
 }
+*/
 
 // LastSetWindowPosTick = Workaround for a wine+gnome bug where each SetWindowPos call triggers a WA_INACTIVE message
 DWORD LastSetWindowPosTick;
@@ -525,8 +536,11 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
 {
     printf("DirectDraw::SetDisplayMode(This=%p, width=%d, height=%d, bpp=%d)\n", This, (unsigned int)width, (unsigned int)height, (unsigned int)bpp);
 
+    // support bpp = 24/32
+    /*
     if (bpp != 8 && bpp != 16)
         return DDERR_INVALIDMODE;
+    */
 
     if (This->render.thread)
     {
@@ -547,7 +561,11 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
         if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &This->mode) == FALSE)
         {
             /* not expected */
-            return DDERR_UNSUPPORTED;
+            // return DDERR_UNSUPPORTED;
+            // ignore under Windows NT 3.51
+            This->mode.dmPelsWidth = width;
+            This->mode.dmPelsHeight = height;
+            This->mode.dmBitsPerPel = bpp;
         }
 
         const HANDLE hbicon = LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(IDR_MYMENU), IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
@@ -574,6 +592,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
     This->width = width;
     This->height = height;
     This->bpp = bpp;
+    This->render.bpp = bpp;
 
     ddraw->cursor.x = width / 2;
     ddraw->cursor.y = height / 2;
@@ -583,6 +602,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
         This->render.width = This->mode.dmPelsWidth;
         This->render.height = This->mode.dmPelsHeight;
 
+        /*
         if (This->windowed) //windowed-fullscreen aka borderless
         {
             This->border = FALSE;
@@ -594,6 +614,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
                 This->render.height++;
 
         }
+        */
     }
 
     if(This->render.width < This->width)
@@ -607,7 +628,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
 
     This->render.run = TRUE;
     
-    BOOL lockMouse = ddraw->locked || This->fullscreen;
+    // BOOL lockMouse = ddraw->locked || This->fullscreen;
     mouse_unlock();
 	
     memset(&This->render.mode, 0, sizeof(DEVMODE));
@@ -623,14 +644,16 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
     
     BOOL maintas = ddraw->maintas;
 
-    if (!This->windowed)
-    {
+    /* if (!This->windowed)
+    { */
         // Making sure the chosen resolution is valid
-        int oldWidth = This->render.width;
-        int oldHeight = This->render.height;
+        // int oldWidth = This->render.width;
+        // int oldHeight = This->render.height;
 
         if (ChangeDisplaySettings(&This->render.mode, CDS_TEST) != DISP_CHANGE_SUCCESSFUL)
         {
+            return DDERR_UNSUPPORTED;
+            /*
             // fail... compare resolutions
             if (This->render.width > This->mode.dmPelsWidth || This->render.height > This->mode.dmPelsHeight)
             {
@@ -706,8 +729,9 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
                     }
                 }
             }
+            */
         }
-    }
+    // }
 
     if (!ddraw->handlemouse)
         This->boxing = maintas = FALSE;
@@ -758,6 +782,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
     This->render.unScaleW = ((float)This->width / This->render.viewport.width);
     This->render.unScaleH = ((float)This->height / This->render.viewport.height);
 
+    /*
     if (This->windowed)
     {
         if (!This->border)
@@ -772,7 +797,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
         if (ddraw->wine)
             SetWindowLong(This->hWnd, GWL_STYLE, (GetWindowLong(This->hWnd, GWL_STYLE) | WS_MINIMIZEBOX) & ~(WS_MAXIMIZEBOX | WS_THICKFRAME));
 
-        /* center the window with correct dimensions */
+        // center the window with correct dimensions
         int x = (WindowRect.left != -32000) ? WindowRect.left : (This->mode.dmPelsWidth / 2) - (This->render.width / 2);
         int y = (WindowRect.top != -32000) ? WindowRect.top : (This->mode.dmPelsHeight / 2) - (This->render.height / 2);
         RECT dst = { x, y, This->render.width + x, This->render.height + y };
@@ -790,8 +815,9 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
     {
         if (This->renderer == render_d3d9_main)
             InitDirect3D9();
+    */
 
-        if (!Direct3D9Active && ChangeDisplaySettings(&This->render.mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+        if (/* !Direct3D9Active && */ ChangeDisplaySettings(&This->render.mode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
             This->render.run = FALSE;
             return DDERR_INVALIDMODE;
@@ -804,7 +830,7 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
         LastSetWindowPosTick = timeGetTime();
 
         mouse_lock();
-    }
+    // }
     
     if(This->render.viewport.x != 0 || This->render.viewport.y != 0)
     {
@@ -819,7 +845,8 @@ HRESULT __stdcall ddraw_SetDisplayMode(IDirectDrawImpl *This, DWORD width, DWORD
         InterlockedExchange(&ddraw->render.surfaceUpdated, TRUE);
         ReleaseSemaphore(ddraw->render.sem, 1, NULL);
 
-        This->render.thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)This->renderer, NULL, 0, NULL);
+        DWORD threadId; // necessary under Windows NT 3.51
+        This->render.thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)This->renderer, NULL, 0, &threadId);
     }
 
     return DD_OK;
@@ -832,6 +859,7 @@ HRESULT __stdcall ddraw_SetDisplayMode2(IDirectDrawImpl *This, DWORD width, DWOR
     return ddraw_SetDisplayMode(This, width, height, bpp);
 }
 
+/*
 void ToggleFullscreen()
 {
     if (ddraw->windowed)
@@ -857,6 +885,7 @@ void ToggleFullscreen()
         mouse_lock();
     }
 }
+*/
 
 BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle)
 {
@@ -878,7 +907,7 @@ BOOL UnadjustWindowRectEx(LPRECT prc, DWORD dwStyle, BOOL fMenu, DWORD dwExStyle
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     RECT rc = { 0, 0, ddraw->render.width, ddraw->render.height };
-    static BOOL inSizeMove = FALSE;
+    // static BOOL inSizeMove = FALSE;
     static int redrawCount = 0;
     
     switch(uMsg)
@@ -926,6 +955,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             break;
         }
+        /*
         case WM_D3D9DEVICELOST:
         {
             if (Direct3D9Active && Direct3D9_OnDeviceLost())
@@ -935,25 +965,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             return 0;
         }
+        */
         case WM_WINDOWPOSCHANGED:
         {
             WINDOWPOS *pos = (WINDOWPOS *)lParam;
 
-            if (ddraw->wine && !ddraw->windowed && (pos->x > 0 || pos->y > 0) && LastSetWindowPosTick + 500 < timeGetTime())
+            if (ddraw->wine && /* !ddraw->windowed && */ (pos->x > 0 || pos->y > 0) && LastSetWindowPosTick + 500 < timeGetTime())
                 PostMessage(ddraw->hWnd, WM_WINEFULLSCREEN, 0, 0);
 
             break;
         }
         case WM_WINEFULLSCREEN:
         {
-            if (!ddraw->windowed)
-            {
+            /* if (!ddraw->windowed)
+            { */
                 LastSetWindowPosTick = timeGetTime();
                 SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 1, 1, ddraw->render.width, ddraw->render.height, SWP_SHOWWINDOW);
                 SetWindowPos(ddraw->hWnd, HWND_TOPMOST, 0, 0, ddraw->render.width, ddraw->render.height, SWP_SHOWWINDOW);
-            }
+            // }
             return 0;
         }
+        /*
         case WM_ENTERSIZEMOVE:
         {
             if (ddraw->windowed)
@@ -1106,7 +1138,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         WindowRect.right = LOWORD(lParam);
                         WindowRect.bottom = HIWORD(lParam);
                     }
-                    /*
+                    / *
                     else if (ddraw->wine)
                     {
                         WindowRect.right = LOWORD(lParam);
@@ -1114,7 +1146,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                         if (WindowRect.right != ddraw->render.width || WindowRect.bottom != ddraw->render.height)
                             ddraw_SetDisplayMode(ddraw, ddraw->width, ddraw->height, ddraw->bpp);
                     }
-                    */
+                    * /
                 }
             }
 
@@ -1124,7 +1156,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
             }
 
-            return DefWindowProc(hWnd, uMsg, wParam, lParam); /* Carmageddon fix */
+            return DefWindowProc(hWnd, uMsg, wParam, lParam); // Carmageddon fix
         }
         case WM_MOVE:
         {
@@ -1146,10 +1178,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             if (!ddraw->handlemouse)
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
 
-            return DefWindowProc(hWnd, uMsg, wParam, lParam); /* Carmageddon fix */
+            return DefWindowProc(hWnd, uMsg, wParam, lParam); // Carmageddon fix
         }
+        */
 
-        /* C&C and RA really don't want to close down */
+        // C&C and RA really don't want to close down
         case WM_SYSCOMMAND:
             if (wParam == SC_CLOSE && !GameHandlesClose)
             {
@@ -1164,27 +1197,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_ACTIVATE:
             if (wParam == WA_ACTIVE || wParam == WA_CLICKACTIVE)
             {
-                if (!ddraw->windowed)
+                /* if (!ddraw->windowed)
                 {
                     if (!Direct3D9Active)
-                    {
+                    { */
                         ChangeDisplaySettings(&ddraw->render.mode, CDS_FULLSCREEN);
 
                         if (wParam == WA_ACTIVE)
                         {
                             mouse_lock();
                         }
-                    }
+                    // }
 
                     InterlockedExchange(&ddraw->minimized, FALSE);
-                }
+                // }
 
                 if (!ddraw->handlemouse)
                     RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN);
             }
             else if (wParam == WA_INACTIVE)
             {
-                if (!ddraw->windowed && !ddraw->locked && ddraw->noactivateapp)
+                if (/* !ddraw->windowed && */ !ddraw->locked && ddraw->noactivateapp)
                     return 0;
 
                 mouse_unlock();
@@ -1193,16 +1226,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     return 0;
 
                 /* minimize our window on defocus when in fullscreen */
-                if (!ddraw->windowed)
+                /* if (!ddraw->windowed)
                 {
                     if (!Direct3D9Active)
-                    {
+                    { */
                         ShowWindow(ddraw->hWnd, SW_MINIMIZE);
                         ChangeDisplaySettings(&ddraw->mode, 0);
-                    }
+                    // }
 
                     InterlockedExchange(&ddraw->minimized, TRUE);
-                }
+                // }
             }
             return 0;
 
@@ -1230,7 +1263,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case WM_ACTIVATEAPP:
             /* C&C and RA stop drawing when they receive this with FALSE wParam, disable in windowed mode */
-            if (ddraw->windowed || ddraw->noactivateapp)
+            if (/* ddraw->windowed || */ ddraw->noactivateapp)
             {
                 // let it pass through once (tiberian sun)
                 static BOOL oneTime;
@@ -1256,6 +1289,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             mouse_lock();
             return 0;
         }
+        /*
         case WM_NCLBUTTONDBLCLK:
         {
             ToggleFullscreen();
@@ -1270,6 +1304,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
         }
+        */
         case WM_KEYDOWN:
             if(wParam == VK_CONTROL || wParam == VK_TAB)
             {
@@ -1369,6 +1404,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_PAINT:
         {
+            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE) {
+                PAINTSTRUCT ps;
+                BeginPaint(hWnd, &ps);
+                EndPaint(hWnd, &ps);
+                printf("Skip WM_PAINT\n");
+                return 0;
+            }
             if (!ddraw->handlemouse && redrawCount > 0)
             {
                 redrawCount--;
@@ -1382,6 +1424,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_ERASEBKGND:
         {
+            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE) {
+                printf("Skip WM_ERASEBKGND\n");
+                return TRUE;
+            }
             EnterCriticalSection(&ddraw->cs);
             FillRect(ddraw->render.hDC, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
             ReleaseSemaphore(ddraw->render.sem, 1, NULL);
@@ -1399,6 +1445,9 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
 
     printf("DirectDraw::SetCooperativeLevel(This=%p, hWnd=0x%08X, dwFlags=0x%08X)\n", This, (unsigned int)hWnd, (unsigned int)dwFlags);
 
+    if (dwFlags & DDSCL_NORMAL) {
+        return DDERR_UNSUPPORTED;
+    }
     /* Red Alert for some weird reason does this on Windows XP */
     if(hWnd == NULL)
     {
@@ -1425,18 +1474,20 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
             memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
             pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
             pfd.nVersion = 1;
-            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER | (This->renderer == render_main ? PFD_SUPPORT_OPENGL : 0);
+            pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER; // | (This->renderer == render_main ? PFD_SUPPORT_OPENGL : 0);
             pfd.iPixelType = PFD_TYPE_RGBA;
             pfd.cColorBits = ddraw->render.bpp ? ddraw->render.bpp : ddraw->mode.dmBitsPerPel;
             pfd.iLayerType = PFD_MAIN_PLANE;
             SetPixelFormat(This->render.hDC, ChoosePixelFormat(This->render.hDC, &pfd), &pfd);
         }
 
+        /*
         if (ddraw->handlemouse && ddraw->windowed)
         {
             while (ShowCursor(FALSE) > 0); //workaround for direct input games
             while (ShowCursor(TRUE) < 0);
         }
+        */
 
         SetCursor(LoadCursor(NULL, IDC_ARROW));
 
@@ -1445,8 +1496,10 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
         ddraw->isredalert = strcmp(This->title, "Red Alert") == 0;
         ddraw->iscnc1 = strcmp(This->title, "Command & Conquer") == 0;
 
+        /*
         if (This->vhack && !ddraw->isredalert && !ddraw->iscnc1)
             This->vhack = 0;
+        */
     }
 
     return DD_OK;
@@ -1517,8 +1570,28 @@ ULONG __stdcall ddraw_Release(IDirectDrawImpl *This)
                 This->render.thread = NULL;
             }
 
+            /*
             if (This->renderer == render_d3d9_main)
                 Direct3D9_Release();
+            */
+        }
+
+        if (This->render.hDVGA != INVALID_HANDLE_VALUE) {
+            CloseHandle(This->render.hDVGA);
+            This->render.hDVGA = INVALID_HANDLE_VALUE;
+        }
+        if (This->render.hDPal != INVALID_HANDLE_VALUE) {
+            CloseHandle(This->render.hDPal);
+            This->render.hDPal = INVALID_HANDLE_VALUE;
+        }
+
+        if (This->render.hPalette)
+        {
+            if (This->render.hDC) {
+                SelectPalette(This->render.hDC, (HPALETTE) GetStockObject(DEFAULT_PALETTE), FALSE);
+            }
+            DeleteObject(This->render.hPalette);
+            This->render.hPalette = NULL;
         }
 
         if(This->render.hDC)
@@ -1591,7 +1664,7 @@ struct IDirectDrawImplVtbl iface =
     ddraw_Initialize,
     ddraw_RestoreDisplayMode,
     ddraw_SetCooperativeLevel,
-    ddraw_SetDisplayMode,
+    {ddraw_SetDisplayMode},
     ddraw_WaitForVerticalBlank
 };
 
@@ -1663,6 +1736,21 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     InitializeCriticalSection(&This->cs);
     This->render.ev = CreateEvent(NULL, TRUE, FALSE, NULL);
     This->render.sem = CreateSemaphore(NULL, 0, 1, NULL);
+
+    This->render.hDVGA = CreateFile("\\\\.\\DirectVGA", GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    if (This->render.hDVGA == INVALID_HANDLE_VALUE) {
+        printf("Error %d: Could not open device \\\\.\\DirectVGA. Make sure the driver is loaded.\n", GetLastError());
+        This->render.hDPal = INVALID_HANDLE_VALUE;
+    } else {
+        This->render.hDPal = CreateFile("\\\\.\\DirectPalette", GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+        if (This->render.hDPal == INVALID_HANDLE_VALUE) {
+            printf("Error %d: Could not open device \\\\.\\DirectPalette. Make sure the driver is loaded.\n", GetLastError());
+        }
+    }
+    OSVERSIONINFO osVerInfo;
+    osVerInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+    GetVersionEx(&osVerInfo);
+    This->render.winVer = osVerInfo.dwMajorVersion;
 
     This->wine = GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version") != 0;
 

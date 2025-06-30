@@ -1,0 +1,1 @@
+i686-w64-mingw32-gcc -O3 -Wall -s test2.c -o test2.exe -lgdi32

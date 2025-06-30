@@ -34,7 +34,7 @@ BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
     realpt.x = pt.x;
     realpt.y = pt.y;
     
-    if(ddraw->locked && (!ddraw->windowed || ScreenToClient(ddraw->hWnd, &pt)))
+    if(ddraw->locked /* && (!ddraw->windowed || ScreenToClient(ddraw->hWnd, &pt)) */)
     {
         //fallback solution for possible ClipCursor failure
         int diffx = 0, diffy = 0;
@@ -80,6 +80,7 @@ BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
             ddraw->cursor.y = pt.y;
         }
 
+        /*
         if (ddraw->vhack && InterlockedExchangeAdd(&ddraw->incutscene, 0))
         {
             diffx = 0;
@@ -100,6 +101,7 @@ BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint)
             if (diffx || diffy)
                 SetCursorPos(realpt.x - diffx, realpt.y - diffy);
         }
+        */
     }
 
     if (lpPoint)
@@ -403,10 +405,12 @@ BOOL WINAPI fake_GetClipCursor(LPRECT lpRect)
     return FALSE;
 }
 
+/*
 BOOL WINAPI fake_GetCursorInfo(PCURSORINFO pci)
 {
     return pci && ddraw && GetCursorInfo(pci) && ScreenToClient(ddraw->hWnd, &pci->ptScreenPos);
 }
+*/
 
 int WINAPI fake_GetSystemMetrics(int nIndex)
 {
@@ -473,7 +477,7 @@ void mouse_init()
     HookIAT(GetModuleHandle(NULL), "user32.dll", "SetCursorPos", (PROC)fake_SetCursorPos);
     HookIAT(GetModuleHandle(NULL), "user32.dll", "GetClipCursor", (PROC)fake_GetClipCursor);
     HookIAT(GetModuleHandle(NULL), "user32.dll", "WindowFromPoint", (PROC)fake_WindowFromPoint);
-    HookIAT(GetModuleHandle(NULL), "user32.dll", "GetCursorInfo", (PROC)fake_GetCursorInfo);
+    // HookIAT(GetModuleHandle(NULL), "user32.dll", "GetCursorInfo", (PROC)fake_GetCursorInfo);
     HookIAT(GetModuleHandle(NULL), "user32.dll", "GetSystemMetrics", (PROC)fake_GetSystemMetrics);
     HookIAT(GetModuleHandle(NULL), "user32.dll", "SetWindowPos", (PROC)fake_SetWindowPos);
     HookIAT(GetModuleHandle(NULL), "user32.dll", "MoveWindow", (PROC)fake_MoveWindow);
