@@ -51,7 +51,7 @@ typedef struct SpeedLimiter
 {
     DWORD ticklength;
     LONGLONG tickLengthNs;
-    HANDLE hTimer;
+    // HANDLE hTimer;
     LARGE_INTEGER dueTime;
     BOOL useBltOrFlip;
 } SpeedLimiter;
@@ -113,7 +113,7 @@ typedef struct IDirectDrawImpl
     BOOL locked;
     BOOL adjmouse;
     BOOL devmode;
-    BOOL vsync;
+    // BOOL vsync;
     // BOOL vhack;
 	BOOL isredalert;
 	BOOL iscnc1;
@@ -128,7 +128,7 @@ typedef struct IDirectDrawImpl
     LONG minimized;
     BOOL altenter;
     BOOL hidecursor;
-    BOOL accurateTimers;
+    // BOOL accurateTimers;
     SpeedLimiter ticksLimiter;
     SpeedLimiter flipLimiter;
     SpeedLimiter fpsLimiter;

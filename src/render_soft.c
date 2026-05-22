@@ -55,7 +55,7 @@ DWORD WINAPI render_soft_main(void)
     {
         float len = 1000.0f / maxFPS;
         ddraw->fpsLimiter.tickLengthNs = len * 10000;
-        ddraw->fpsLimiter.ticklength = len + (ddraw->accurateTimers ? 0.5f : 0.0f);
+        ddraw->fpsLimiter.ticklength = len; // + (ddraw->accurateTimers ? 0.5f : 0.0f);
     }
 
     while (ddraw->render.run && WaitForSingleObject(ddraw->render.sem, INFINITE) != WAIT_FAILED)
@@ -67,7 +67,7 @@ DWORD WINAPI render_soft_main(void)
             {
                 ReleaseSemaphore(ddraw->render.sem, 1, NULL);
                 SetEvent(ddraw->render.ev);
-                SwitchToThread();
+                Sleep(1); // SwitchToThread();
                 continue;
             }
             lastTick = curTick;

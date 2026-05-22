@@ -168,6 +168,7 @@ BOOL detect_cutscene()
 
 void LimitGameTicks()
 {
+    /*
     if (ddraw->ticksLimiter.hTimer)
     {
         FILETIME ft = { 0 };
@@ -187,6 +188,7 @@ void LimitGameTicks()
     }
     else
     {
+    */
         static DWORD nextGameTick;
         if (!nextGameTick)
         {
@@ -201,7 +203,7 @@ void LimitGameTicks()
             nextGameTick = tickCount;
         else
             Sleep(sleepTime);
-    }
+    // }
 }
 
 HRESULT __stdcall ddraw_Compact(IDirectDrawImpl *This)
@@ -1606,6 +1608,7 @@ ULONG __stdcall ddraw_Release(IDirectDrawImpl *This)
             ddraw->render.ev = NULL;
         }
 
+        /*
         if (This->ticksLimiter.hTimer)
         {
             CancelWaitableTimer(This->ticksLimiter.hTimer);
@@ -1626,6 +1629,7 @@ ULONG __stdcall ddraw_Release(IDirectDrawImpl *This)
             CloseHandle(This->fpsLimiter.hTimer);
             This->fpsLimiter.hTimer = NULL;
         }
+        */
 
         DeleteCriticalSection(&This->cs);
 

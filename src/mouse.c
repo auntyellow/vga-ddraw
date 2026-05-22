@@ -306,6 +306,7 @@ void mouse_unlock()
             while (ShowCursor(TRUE) < 0);
             SetCursor(LoadCursor(NULL, IDC_ARROW));
         }
+        /*
         else
         {
             CURSORINFO ci = { .cbSize = sizeof(CURSORINFO) };
@@ -315,6 +316,7 @@ void mouse_unlock()
                 while (ShowCursor(TRUE) < 0);
             }
         }
+        */
 
         ClipCursor(NULL);
         ReleaseCapture();

@@ -24,8 +24,6 @@
 // enables redraw via blt/unlock if there wasn't any flip for X ms
 #define FLIP_REDRAW_TIMEOUT 1000 / 10
 
-struct IDirectDrawSurfaceImplVtbl IDirectDrawSurfaceImplVtbl;
-
 void dump_ddbltflags(DWORD dwFlags);
 void dump_ddscaps(DWORD dwCaps);
 void dump_ddsd(DWORD dwFlags);
@@ -678,9 +676,11 @@ HRESULT __stdcall ddraw_surface_Flip(IDirectDrawSurfaceImpl *This, LPDIRECTDRAWS
 
     if(This->caps & DDSCAPS_PRIMARYSURFACE && ddraw->render.run)
     {
+        /*
         FILETIME lastFlipFT = { 0 };
         if (ddraw->flipLimiter.hTimer)
             GetSystemTimeAsFileTime(&lastFlipFT);
+        */
 
         This->lastFlipTick = timeGetTime();
 
@@ -700,6 +700,7 @@ HRESULT __stdcall ddraw_surface_Flip(IDirectDrawSurfaceImpl *This, LPDIRECTDRAWS
 
         if (flags & DDFLIP_WAIT)
         {
+            /*
             if (ddraw->flipLimiter.hTimer)
             {
                 if (!ddraw->flipLimiter.dueTime.QuadPart)
@@ -717,6 +718,7 @@ HRESULT __stdcall ddraw_surface_Flip(IDirectDrawSurfaceImpl *This, LPDIRECTDRAWS
             }
             else
             {
+            */
                 DWORD tick = This->lastFlipTick;
                 while (tick % ddraw->flipLimiter.ticklength) tick++;
                 int sleepTime = tick - This->lastFlipTick;
@@ -727,7 +729,7 @@ HRESULT __stdcall ddraw_surface_Flip(IDirectDrawSurfaceImpl *This, LPDIRECTDRAWS
 
                 if (sleepTime > 0 && sleepTime <= ddraw->flipLimiter.ticklength)
                     Sleep(sleepTime);
-            }
+            // }
         }
 
         if (ddraw->ticksLimiter.ticklength > 0)

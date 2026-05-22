@@ -19,8 +19,6 @@
 #include "palette.h"
 #include "surface.h"
 
-struct IDirectDrawPaletteImplVtbl IDirectDrawPaletteImplVtbl;
-
 IDirectDrawPaletteImpl *LastFreedPalette; // Dungeon Keeper hack
 
 HRESULT __stdcall ddraw_palette_GetEntries(IDirectDrawPaletteImpl *This, DWORD dwFlags, DWORD dwBase, DWORD dwNumEntries, LPPALETTEENTRY lpEntries)
