@@ -14,7 +14,7 @@ BOOL WINAPI ConsoleHandler(DWORD dwType) {
         printf("\nStopping monitor and cleaning up resources...\n");
         bRunning = FALSE;
         // Returning TRUE tells the OS we've handled the signal
-        return TRUE; 
+        return TRUE;
     }
     return FALSE;
 }
@@ -32,7 +32,7 @@ int main() {
     // DBWIN_DATA_READY:   Signal from the application that data is written
     hEventBufferReady = CreateEventA(NULL, FALSE, FALSE, "DBWIN_BUFFER_READY");
     hEventDataReady   = CreateEventA(NULL, FALSE, FALSE, "DBWIN_DATA_READY");
-    
+
     // 3. Create the shared memory buffer (standard 4KB for NT)
     hSharedFile = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 4096, "DBWIN_BUFFER");
 
@@ -44,7 +44,7 @@ int main() {
 
     // Map the shared memory into our process address space
     pBuffer = (char*)MapViewOfFile(hSharedFile, FILE_MAP_READ, 0, 0, 4096);
-    
+
     printf("--- NT Debug Monitor Started ---\n");
     printf("Listening for OutputDebugStringA calls...\n");
     printf("Press Ctrl+C to exit safely.\n\n");
@@ -61,7 +61,7 @@ int main() {
             DWORD pid = *(DWORD*)pBuffer;
             // The actual message starts after the DWORD
             const char* message = pBuffer + sizeof(DWORD);
-            
+
             printf("[PID %lu]: %s\n", pid, message);
         }
         else if (waitResult == WAIT_TIMEOUT) {

@@ -12,6 +12,8 @@
 NTSTATUS Stub(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
   printf(("Stub: %d\n", stack->MajorFunction));
+  Irp->IoStatus.Status = STATUS_SUCCESS;
+  Irp->IoStatus.Information = 0;
   IoCompleteRequest(Irp, IO_NO_INCREMENT);
   return STATUS_SUCCESS;
 }
@@ -49,12 +51,12 @@ NTSTATUS DirectWrite(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
   return Irp->IoStatus.Status;
 }
 
-void UnloadDriver(PDRIVER_OBJECT DriverObject) {
+void DriverUnload(PDRIVER_OBJECT DriverObject) {
   UNICODE_STRING symlinkName;
   RtlInitUnicodeString(&symlinkName, SYMLINK_NAME);
-  printf(("UnloadDriver\n"));
   IoDeleteSymbolicLink(&symlinkName);
   IoDeleteDevice(DriverObject->DeviceObject);
+  printf(("Driver Unloaded\n"));
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
@@ -85,7 +87,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
     DriverObject->MajorFunction[i] = Stub;
   }
   DriverObject->MajorFunction[IRP_MJ_WRITE] = DirectWrite;
-  DriverObject->DriverUnload = UnloadDriver;
+  DriverObject->DriverUnload = DriverUnload;
   deviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
   return STATUS_SUCCESS;

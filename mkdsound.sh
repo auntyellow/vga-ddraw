@@ -1,1 +1,0 @@
-i686-w64-mingw32-gcc -Wall -Wl,--enable-stdcall-fixup -s dsound.c -shared -o dsound.dll dsound.def

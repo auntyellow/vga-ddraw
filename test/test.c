@@ -16,6 +16,7 @@ void DbgPrint(const char *format, ...) {
     va_start(args, format);
     _vsnprintf(buffer, sizeof(buffer), format, args);
     OutputDebugStringA(buffer);
+    va_end(args);
 }
 
 LPDIRECTDRAW lpDD = NULL;
@@ -59,17 +60,17 @@ HRESULT CreateAndAttachPalette() {
     }
 
     if (FAILED(IDirectDraw_CreatePalette(lpDD, DDPCAPS_8BIT | DDPCAPS_ALLOW256, entries, &lpPalette, NULL))) {
-        OutputDebugString("CreatePalette Failed");
+        DbgPrint("CreatePalette Failed");
         return E_FAIL;
     }
 
     if (FAILED(IDirectDrawSurface_SetPalette(lpPrimary, lpPalette))) {
-        OutputDebugString("SetPalette(primary) Failed");
+        DbgPrint("SetPalette(primary) Failed");
         return E_FAIL;
     }
 
     if (FAILED(IDirectDrawSurface_SetPalette(lpBackBuffer, lpPalette))) {
-        OutputDebugString("SetPalette(backbuffer) Failed");
+        DbgPrint("SetPalette(backbuffer) Failed");
         return E_FAIL;
     }
 
@@ -81,15 +82,15 @@ HRESULT InitDirectDraw(HWND hwnd) {
     DDSCAPS ddscaps;
 
     if (FAILED(DirectDrawCreate(NULL, &lpDD, NULL))) {
-        OutputDebugString("DirectDrawCreate Failed");
+        DbgPrint("DirectDrawCreate Failed");
         return E_FAIL;
     }
     if (FAILED(IDirectDraw_SetCooperativeLevel(lpDD, hwnd, DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE))) {
-        OutputDebugString("SetCooperativeLevel Failed");
+        DbgPrint("SetCooperativeLevel Failed");
         return E_FAIL;
     }
     if (FAILED(IDirectDraw_SetDisplayMode(lpDD, SCREEN_WIDTH, SCREEN_HEIGHT, TEST_BPP))) {
-        OutputDebugString("SetDisplayMode Failed");
+        DbgPrint("SetDisplayMode Failed");
         return E_FAIL;
     }
 
@@ -100,14 +101,14 @@ HRESULT InitDirectDraw(HWND hwnd) {
     ddsd.dwBackBufferCount = 1;
 
     if (FAILED(IDirectDraw_CreateSurface(lpDD, &ddsd, &lpPrimary, NULL))) {
-        OutputDebugString("CreateSurface Failed");
+        DbgPrint("CreateSurface Failed");
         return E_FAIL;
     }
 
     ZeroMemory(&ddscaps, sizeof(ddscaps));
     ddscaps.dwCaps = DDSCAPS_BACKBUFFER;
     if (FAILED(IDirectDrawSurface_GetAttachedSurface(lpPrimary, &ddscaps, &lpBackBuffer))) {
-        OutputDebugString("GetAttachedSurface Failed");
+        DbgPrint("GetAttachedSurface Failed");
         return E_FAIL;
     }
 
@@ -142,13 +143,13 @@ HRESULT LoadBMPToSurface(LPDIRECTDRAWSURFACE* surface, LPCSTR filename) {
     ddsd.dwHeight = BMP_HEIGHT;
 
     if (FAILED(IDirectDraw_CreateSurface(lpDD, &ddsd, surface, NULL))) {
-        OutputDebugString("CreateSurface Failed");
+        DbgPrint("CreateSurface Failed");
         return E_FAIL;
     }
 
     if (TEST_BPP == 8 && lpPalette != NULL) {
         if (FAILED(IDirectDrawSurface_SetPalette(*surface, lpPalette))) {
-            OutputDebugString("SetPalette(image) Failed");
+            DbgPrint("SetPalette(image) Failed");
             return E_FAIL;
         }
     }
@@ -170,7 +171,7 @@ HRESULT LoadBMPToSurface(LPDIRECTDRAWSURFACE* surface, LPCSTR filename) {
     }
 
     if (FAILED(IDirectDrawSurface_GetDC(*surface, &hdc))) {
-        OutputDebugString("GetDC Failed");
+        DbgPrint("GetDC Failed");
         return E_FAIL;
     }
     hdcBmp = CreateCompatibleDC(NULL);
@@ -210,7 +211,7 @@ HRESULT LoadBMPToSurface(LPDIRECTDRAWSURFACE* surface, LPCSTR filename) {
     ZeroMemory(&ddsd, sizeof(ddsd));
     ddsd.dwSize = sizeof(ddsd);
     if (FAILED(IDirectDrawSurface_Lock(*surface, NULL, &ddsd, DDLOCK_SURFACEMEMORYPTR | DDLOCK_WAIT, NULL))) {
-        OutputDebugString("Lock Failed");
+        DbgPrint("Lock Failed");
         return E_FAIL;
     }
 
@@ -314,11 +315,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     ShowWindow(hwnd, SW_SHOW);
 
     if (FAILED(InitDirectDraw(hwnd))) {
-        OutputDebugString("InitDirectDraw Failed");
+        DbgPrint("InitDirectDraw Failed");
         return 0;
     }
     if (FAILED(LoadBMPToSurface(&lpImage, "wizard.bmp"))) {
-        OutputDebugString("LoadBMPToSurface Failed");
+        DbgPrint("LoadBMPToSurface Failed");
         return 0;
     }
 

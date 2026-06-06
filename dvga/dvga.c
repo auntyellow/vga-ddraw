@@ -29,6 +29,8 @@
 NTSTATUS Stub(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
   PIO_STACK_LOCATION stack = IoGetCurrentIrpStackLocation(Irp);
   printf(("Stub: %u\n", stack->MajorFunction));
+  Irp->IoStatus.Status = STATUS_SUCCESS;
+  Irp->IoStatus.Information = 0;
   IoCompleteRequest(Irp, IO_NO_INCREMENT);
   return STATUS_SUCCESS;
 }
@@ -161,25 +163,26 @@ NTSTATUS DirectWrite(PDEVICE_OBJECT DeviceObject, PIRP Irp) {
 
 #endif
 
-void UnloadDriver(PDRIVER_OBJECT DriverObject) {
+void DriverUnload(PDRIVER_OBJECT DriverObject) {
   UNICODE_STRING symlinkName;
   PDEVICE_OBJECT deviceObject = DriverObject->DeviceObject;
-  PVOID mappedAddr = *((PVOID *) deviceObject->DeviceExtension);
-  if (mappedAddr) {
-    MmUnmapIoSpace(mappedAddr, MAP_MEM_LEN);
+  PVOID *mappedAddr = (PVOID *) deviceObject->DeviceExtension;
+
+  if (*mappedAddr != NULL) {
+    MmUnmapIoSpace(*mappedAddr, MAP_MEM_LEN);
+    *mappedAddr = NULL;
   }
 
   RtlInitUnicodeString(&symlinkName, SYMLINK_NAME);
-  printf(("UnloadDriver\n"));
   IoDeleteSymbolicLink(&symlinkName);
   IoDeleteDevice(deviceObject);
+  printf(("Driver Unloaded\n"));
 }
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) {
   ULONG i, bus, slot, bytesRead, quadPart;
   PCI_COMMON_CONFIG pciConfig;
-  UNICODE_STRING deviceName;
-  UNICODE_STRING symlinkName;
+  UNICODE_STRING deviceName, symlinkName;
   PDEVICE_OBJECT deviceObject;
   PVOID *mappedAddr;
   PHYSICAL_ADDRESS physAddr;
@@ -249,7 +252,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
     DriverObject->MajorFunction[i] = Stub;
   }
   DriverObject->MajorFunction[IRP_MJ_WRITE] = DirectWrite;
-  DriverObject->DriverUnload = UnloadDriver;
+  DriverObject->DriverUnload = DriverUnload;
   deviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
   return STATUS_SUCCESS;

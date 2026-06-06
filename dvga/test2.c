@@ -18,6 +18,7 @@ void DbgPrint(const char *format, ...) {
   va_start(args, format);
   _vsnprintf(buffer, sizeof(buffer), format, args);
   OutputDebugStringA(buffer);
+  va_end(args);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
