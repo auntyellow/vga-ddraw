@@ -206,7 +206,7 @@ DWORD WINAPI render_soft_main(void)
                 } else {
                     printf("Error %d: Write failed\n", GetLastError());
                 }
-            } 
+            }
         }
 
         LeaveCriticalSection(&ddraw->cs);
