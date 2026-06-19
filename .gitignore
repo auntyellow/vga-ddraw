@@ -4,6 +4,6 @@ ddraw.ini
 dvga/dvga.sys
 dvga/dvga2.sys
 dvga/dpal.sys
-dvga/test2.exe
-test/test.exe
+dvga/testdvga.exe
+test/testdd.exe
 test/dbgview.exe
