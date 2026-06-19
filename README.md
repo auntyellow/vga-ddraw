@@ -36,3 +36,25 @@ Why choose `cnc-ddraw` 1.3.4.0?
 - It is the base used in FunkyFr3sh's [Red Alert 1 Installer](https://funkyfr3sh.cnc-comm.com/).
 - Version 1.3.5.0 introduces a dependency on [Detours](https://github.com/microsoft/detours), which makes it incompatible with Windows 9x and NT 3.51.
 
+## How to Compile
+
+### NT 5.x Drivers
+
+- Install [DDK 5.1.2600.1106](https://winworldpc.com/product/windows-sdk-ddk/xp-nt-51) into `C:\WINDDK\2600.1106`
+- Run `dvga\makefile.bat`
+
+### NT 3.51 / 4.0 Drivers
+
+- Install [MSVC 2.1](https://winworldpc.com/product/visual-c/2x) into `C:\MSVC20`
+- Install [DDK 3.51.1057.1](https://winworldpc.com/product/windows-sdk-ddk/nt-3x) into `C:\DDK`
+- Run `dvga\makefile_nt351.bat`
+
+### DirectDraw
+
+- Install mingw32 (apt install gcc-mingw-w64-i686)
+- Run `makefile.bat` or `makefile.sh`
+
+### Tests
+
+- Install MSVC 6.0 (Visual Studio 6.0) or mingw32 (apt install gcc-mingw-w64-i686)
+- Run `maketest.bat` or `maketest.sh`
