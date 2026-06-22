@@ -17,7 +17,8 @@ void DbgPrint(const char *format, ...) {
   va_list args;
   va_start(args, format);
   _vsnprintf(buffer, sizeof(buffer), format, args);
-  OutputDebugStringA(buffer);
+  // OutputDebugStringA(buffer);
+  MessageBoxA(NULL, buffer, "DVGA Test", MB_ICONEXCLAMATION);
   va_end(args);
 }
 
@@ -170,11 +171,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
 
   hDPal = CreateFile("\\\\.\\DirectPalette", GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
   if (hDPal == INVALID_HANDLE_VALUE) {
-    DbgPrint("Warning %d: Could not open device \\\\.\\DirectPalette.\n", GetLastError());
+    // DbgPrint("Warning %d: Could not open device \\\\.\\DirectPalette.\n", GetLastError());
   } else {
     success = WriteFile(hDPal, pLogPal->palPalEntry, pLogPal->palNumEntries*4, &written, NULL);
     if (success) {
-      DbgPrint("Wrote %d bytes into VGA palette\n", written);
+      // DbgPrint("Wrote %d bytes into VGA palette\n", written);
     } else {
       DbgPrint("Error %d: Write palette failed\n", GetLastError());
     }

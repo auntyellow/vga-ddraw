@@ -15,7 +15,8 @@ void DbgPrint(const char *format, ...) {
     va_list args;
     va_start(args, format);
     _vsnprintf(buffer, sizeof(buffer), format, args);
-    OutputDebugStringA(buffer);
+    // OutputDebugStringA(buffer);
+    MessageBoxA(NULL, buffer, "DirectDraw Test", MB_ICONEXCLAMATION);
     va_end(args);
 }
 

@@ -205,7 +205,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
     return status;
   }
 
-  // ReactOS/QEMU: 0xFE000000, ReactOS/v86,ReactOS/VBox,WinXP/VBox: 0xE0000000
+  // ReactOS/QEMU: 0xFE000000, ReactOS/v86,ReactOS/VBox,WinXP/VBox: 0xE0000000, most modern hardwares: 0xD0000000
   physAddr.QuadPart = 0xE0000000;
   for (bus = 0; bus < 256; bus ++) {
     for (slot = 0; slot < 32; slot ++) {
@@ -218,8 +218,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
       }
       quadPart = pciConfig.u.type0.BaseAddresses[0] & ~0xF;
       printf(("bus: %u, slot: %u, vendorID: 0x%04X, addr: 0x%08X\n", bus, slot, pciConfig.VendorID, quadPart));
-      // skip text mode memory
-      if (quadPart >= 0xE0000000) {
+      // skip windowed framebuffer (usually 0xA0000~0xBFFFF)
+      if (quadPart >= 0x80000000) {
         physAddr.QuadPart = quadPart;
       }
     }

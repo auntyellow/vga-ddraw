@@ -57,4 +57,4 @@ Why choose `cnc-ddraw` 1.3.4.0?
 ### Tests
 
 - Install MSVC 6.0 (Visual Studio 6.0) or mingw32 (apt install gcc-mingw-w64-i686)
-- Run `maketest.bat` or `maketest.sh`
+- Run `dvga\maketest.bat`, `test\makefile.bat` or `dvga/maketest.sh`, `test/makefile.sh`
