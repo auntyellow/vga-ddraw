@@ -9,6 +9,7 @@ A DirectDraw API re-implementation for smooth 2D gaming under standard VGA drive
 
 ## Supported platforms
 
+- Windows 7 (32-bit only)
 - Windows 2000 / XP
 - Windows NT 4.0 / ReactOS: DirectPalette is required for 8-bit mode
 - Windows NT 3.51: DirectPalette is required for 8-bit mode; msvcrt.dll (from Windows NT 4.0) is required

@@ -153,7 +153,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
   }
 
 #if TEST_BPP == 8
-  pLogPal = (LOGPALETTE *) HeapAlloc(GetProcessHeap(), 0, sizeof(LOGPALETTE) + 215*sizeof(PALETTEENTRY));
+  pLogPal = (LPLOGPALETTE) HeapAlloc(GetProcessHeap(), 0, sizeof(LOGPALETTE) + 215*sizeof(PALETTEENTRY));
   pLogPal->palVersion = 0x300;
   pLogPal->palNumEntries = 216;
   pe = pLogPal->palPalEntry;
@@ -185,7 +185,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
   GetVersionEx(&osVerInfo);
   if (osVerInfo.dwMajorVersion >= 5) {
     hPal = CreatePalette(pLogPal);
-    HeapFree(GetProcessHeap(), 0, pLogPal);
     if (!hPal) {
       DbgPrint("Error %d: CreatePalette failed.\n", GetLastError());
       return 1;
@@ -197,6 +196,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     ReleaseDC(NULL, hdc);
     DeleteObject(hPal);
   }
+  HeapFree(GetProcessHeap(), 0, pLogPal);
 #endif
 
   x = 0;
