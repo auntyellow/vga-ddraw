@@ -1022,7 +1022,7 @@ void dbg_dump_dds_flags(DWORD flags)
     if (flags & DDSD_DEPTH) {
         TRACE("     DDSD_DEPTH\n");
     }
-    if (flags & DDSD_ALL) {
+    if ((flags & DDSD_ALL) == DDSD_ALL) {
         TRACE("     DDSD_ALL\n");
     }
 #endif
