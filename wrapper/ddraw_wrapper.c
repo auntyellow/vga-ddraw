@@ -8,6 +8,7 @@
 #ifdef NDEBUG
 
 #define printf(x)
+#define dump_guid(szGuid, lpGuid) (void) (szGuid)
 
 #else
 
@@ -34,6 +35,16 @@ void DebugPrint(const char *format, ...)
         OutputDebugStringA(buffer);
     }
     va_end(args);
+}
+
+void dump_guid(LPSTR szGuid, LPGUID lpGuid) {
+    if (lpGuid == NULL) {
+        strcpy(szGuid, "NULL");
+    } else {
+        sprintf(szGuid, "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+                lpGuid->Data1, lpGuid->Data2, lpGuid->Data3, lpGuid->Data4[0], lpGuid->Data4[1],
+                lpGuid->Data4[2], lpGuid->Data4[3], lpGuid->Data4[4], lpGuid->Data4[5], lpGuid->Data4[6], lpGuid->Data4[7]);
+    }
 }
 
 #endif
@@ -117,7 +128,9 @@ ULONG STDMETHODCALLTYPE DD_AddRef(WrappedDirectDraw *This)
 
 HRESULT STDMETHODCALLTYPE DD_QueryInterface(WrappedDirectDraw *This, REFIID riid, LPVOID *ppvObj)
 {
-    printf(("DD_QueryInterface: this=0x%p riid=0x%p out=0x%p\n", This, &riid, ppvObj));
+    char szGuid[39];
+    dump_guid(szGuid, (LPGUID) riid);
+    printf(("DD_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
     if (!ppvObj) {
         return E_POINTER;
@@ -467,10 +480,12 @@ HRESULT STDMETHODCALLTYPE DD_GetVerticalBlankStatus(WrappedDirectDraw *This, LPB
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE DD_Initialize(WrappedDirectDraw *This, GUID *lpGuid)
+HRESULT STDMETHODCALLTYPE DD_Initialize(WrappedDirectDraw *This, LPGUID lpGuid)
 {
+    char szGuid[39];
     HRESULT hr = This->real->lpVtbl->Initialize(This->real, lpGuid);
-    printf(("DD_Initialize: this=0x%p guid=0x%p result=0x%08lX\n", This, lpGuid, hr));
+    dump_guid(szGuid, lpGuid);
+    printf(("DD_Initialize: this=0x%p guid=%s result=0x%08lX\n", This, szGuid, hr));
     return hr;
 }
 
@@ -541,7 +556,7 @@ WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real)
     lpVtbl->GetMonitorFrequency = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD))DD_GetMonitorFrequency;
     lpVtbl->GetScanLine = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD))DD_GetScanLine;
     lpVtbl->GetVerticalBlankStatus = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPBOOL))DD_GetVerticalBlankStatus;
-    lpVtbl->Initialize = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, GUID *))DD_Initialize;
+    lpVtbl->Initialize = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPGUID))DD_Initialize;
     lpVtbl->RestoreDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_RestoreDisplayMode;
     lpVtbl->SetCooperativeLevel = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, HWND, DWORD))DD_SetCooperativeLevel;
     lpVtbl->SetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, DWORD, DWORD))DD_SetDisplayMode;
@@ -568,7 +583,9 @@ ULONG STDMETHODCALLTYPE Surf_AddRef(WrappedSurface *This)
 
 HRESULT STDMETHODCALLTYPE Surf_QueryInterface(WrappedSurface *This, REFIID riid, LPVOID *ppvObj)
 {
-    printf(("Surf_QueryInterface: this=0x%p riid=0x%p out=0x%p\n", This, &riid, ppvObj));
+    char szGuid[39];
+    dump_guid(szGuid, (LPGUID) riid);
+    printf(("Surf_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
     if (!ppvObj) {
         return E_POINTER;
@@ -1007,7 +1024,9 @@ ULONG STDMETHODCALLTYPE Clip_AddRef(WrappedClipper *This)
 
 HRESULT STDMETHODCALLTYPE Clip_QueryInterface(WrappedClipper *This, REFIID riid, LPVOID *ppvObj)
 {
-    printf(("Clip_QueryInterface: this=0x%p riid=0x%p out=0x%p\n", This, &riid, ppvObj));
+    char szGuid[39];
+    dump_guid(szGuid, (LPGUID) riid);
+    printf(("Clip_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
     if (!ppvObj) {
         return E_POINTER;
@@ -1130,7 +1149,9 @@ ULONG STDMETHODCALLTYPE Pal_AddRef(WrappedPalette *This)
 
 HRESULT STDMETHODCALLTYPE Pal_QueryInterface(WrappedPalette *This, REFIID riid, LPVOID *ppvObj)
 {
-    printf(("Pal_QueryInterface: this=0x%p riid=0x%p out=0x%p\n", This, &riid, ppvObj));
+    char szGuid[39];
+    dump_guid(szGuid, (LPGUID) riid);
+    printf(("Pal_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
     if (!ppvObj) {
         return E_POINTER;
@@ -1222,11 +1243,13 @@ WrappedPalette *WRAP_Palette(LPDIRECTDRAWPALETTE real)
     return w;
 }
 
-HRESULT WINAPI DirectDrawCreate(LPGUID lpGUID, LPDIRECTDRAW *ppDD, IUnknown *iu)
+HRESULT WINAPI DirectDrawCreate(LPGUID lpGuid, LPDIRECTDRAW *ppDD, IUnknown *iu)
 {
     LPDIRECTDRAW realDD;
     HRESULT hr;
-    printf(("DirectDrawCreate: entry lpGUID=0x%p out_wrapped=0x%p pUnkOuter=0x%p\n", lpGUID, ppDD, iu));
+    char szGuid[39];
+    dump_guid(szGuid, lpGuid);
+    printf(("DirectDrawCreate: entry guid=%s out_wrapped=0x%p pUnkOuter=0x%p\n", szGuid, ppDD, iu));
 
     LoadRealDDraw();
     if (!pReal_DirectDrawCreate) {
@@ -1235,7 +1258,7 @@ HRESULT WINAPI DirectDrawCreate(LPGUID lpGUID, LPDIRECTDRAW *ppDD, IUnknown *iu)
     }
 
     realDD = NULL;
-    hr = pReal_DirectDrawCreate(lpGUID, &realDD, iu);
+    hr = pReal_DirectDrawCreate(lpGuid, &realDD, iu);
     if (FAILED(hr)) {
         printf(("DirectDrawCreate returned 0x%08lX\n", hr));
         return hr;
@@ -1272,7 +1295,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 #ifndef NDEBUG
         if (osvi.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
             g_fpDebug = fopen("ddraw_wrapper.log", "wt");
-            g_fdDebug = _fileno(g_fpDebug);
+            // enable g_fdDebug for hard lockup
+            // g_fdDebug = _fileno(g_fpDebug);
         }
 #endif
     } else if (fdwReason == DLL_PROCESS_DETACH) {
