@@ -5,10 +5,18 @@
 #include <io.h>
 #include <ddraw.h>
 
+#define GUID_STRLEN 40
+#define RECT_STRLEN 52
+#define DWORD_STRLEN 12
+#define BOOL_STRLEN 8
+
 #ifdef NDEBUG
 
 #define printf(x)
 #define dump_guid(szGuid, lpGuid) (void) (szGuid)
+#define dump_rect(szRect, lpRect) (void) (szRect)
+#define dump_dword(szdw, lpdw) (void) (szdw)
+#define dump_bool(szb, lpb) (void) (szb)
 
 #else
 
@@ -38,13 +46,33 @@ void DebugPrint(const char *format, ...)
 }
 
 void dump_guid(LPSTR szGuid, LPGUID lpGuid) {
-    if (lpGuid == NULL) {
-        strcpy(szGuid, "NULL");
-    } else {
+    if (lpGuid) {
         sprintf(szGuid, "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}",
                 lpGuid->Data1, lpGuid->Data2, lpGuid->Data3, lpGuid->Data4[0], lpGuid->Data4[1],
                 lpGuid->Data4[2], lpGuid->Data4[3], lpGuid->Data4[4], lpGuid->Data4[5], lpGuid->Data4[6], lpGuid->Data4[7]);
+    } else {
+        strcpy(szGuid, "NULL");
     }
+}
+
+void dump_rect(LPSTR szRect, LPRECT lpRect) {
+    if (lpRect) {
+        sprintf(szRect, "(%ld,%ld)-(%ld,%ld)", lpRect->left, lpRect->top, lpRect->right, lpRect->bottom);
+    } else {
+        strcpy(szRect, "NULL");
+    }
+}
+
+void dump_dword(LPSTR szdw, LPDWORD lpdw) {
+    if (lpdw) {
+        sprintf(szdw, "%lu", *lpdw);
+    } else {
+        strcpy(szdw, "NULL");
+    }
+}
+
+void dump_bool(LPSTR szb, LPBOOL lpb) {
+    strcpy(szb, lpb ? (*lpb ? "TRUE" : "FALSE") : "NULL");
 }
 
 #endif
@@ -93,13 +121,16 @@ typedef struct WrappedDirectDraw {
     LONG ref;
 } WrappedDirectDraw;
 
+WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real, BOOL bDirectDraw2);
+
 typedef struct WrappedSurface {
     IDirectDrawSurfaceVtbl *lpVtbl;
     LPDIRECTDRAWSURFACE real, attached;
+    WrappedDirectDraw *lpWrappedDD;
     LONG ref;
 } WrappedSurface;
 
-WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attached);
+WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attached, WrappedDirectDraw *lpWrappedDD);
 
 typedef struct WrappedPalette {
     IDirectDrawPaletteVtbl *lpVtbl;
@@ -119,16 +150,17 @@ WrappedClipper *WRAP_Clipper(LPDIRECTDRAWCLIPPER real);
 
 ULONG STDMETHODCALLTYPE DD_AddRef(WrappedDirectDraw *This)
 {
-    LONG newRef;
-    printf(("DD_AddRef: this=0x%p\n", This));
-    newRef = InterlockedIncrement(&This->ref);
-    This->real->lpVtbl->AddRef(This->real);
-    return newRef;
+    LONG newRealRef = This->real->lpVtbl->AddRef(This->real);
+    LONG newWrappedRef = InterlockedIncrement(&This->ref);
+    printf(("DD_AddRef: this=0x%p new_wrapped_ref=%ld new_real_ref=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE DD_QueryInterface(WrappedDirectDraw *This, REFIID riid, LPVOID *ppvObj)
 {
-    char szGuid[39];
+    HRESULT hr;
+    char szGuid[GUID_STRLEN];
     dump_guid(szGuid, (LPGUID) riid);
     printf(("DD_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
@@ -137,28 +169,38 @@ HRESULT STDMETHODCALLTYPE DD_QueryInterface(WrappedDirectDraw *This, REFIID riid
     }
     *ppvObj = NULL;
 
-    if (IsEqualIID(riid, &IID_IDirectDraw) || IsEqualIID(riid, &IID_IUnknown)) {
+    if (IsEqualIID(riid, &IID_IUnknown) || IsEqualIID(riid, &IID_IDirectDraw)) {
         DD_AddRef(This);
         *ppvObj = This;
         return S_OK;
     }
-
-    return This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
+    hr = This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
+    // Getting IDirectDraw2 doesn't increase This->real's ref
+    /*
+    ((WrappedDirectDraw *) *ppvObj)->real->lpVtbl->AddRef(((WrappedDirectDraw *) *ppvObj)->real);
+    LONG nRef = ((WrappedDirectDraw *) *ppvObj)->real->lpVtbl->Release(((WrappedDirectDraw *) *ppvObj)->real);
+    printf(("DD_QueryInterface: real_ref=%ld, wrapped_ref=%ld\n", nRef, ((WrappedDirectDraw *) *ppvObj)->ref));
+    */
+    if (SUCCEEDED(hr) && IsEqualIID(riid, &IID_IDirectDraw2)) {
+        LPVOID pWrapped = WRAP_DirectDraw((LPDIRECTDRAW) *ppvObj, TRUE);
+        printf(("DD_QueryInterface: new_real=0x%p, new_wrapped=0x%p\n", *ppvObj, pWrapped));
+        *ppvObj = pWrapped;
+    }
+    return hr;
 }
 
 ULONG STDMETHODCALLTYPE DD_Release(WrappedDirectDraw *This)
 {
-    LONG newRef;
-    printf(("DD_Release: this=0x%p\n", This));
-    This->real->lpVtbl->Release(This->real);
-
-    newRef = InterlockedDecrement(&This->ref);
-    if (newRef == 0) {
+    LONG newRealRef = This->real->lpVtbl->Release(This->real);
+    LONG newWrappedRef = InterlockedDecrement(&This->ref);
+    printf(("DD_Release: this=0x%p new_wrapped_ref=%ld new_real_ref=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    if (newWrappedRef == 0) {
         HeapFree(GetProcessHeap(), 0, This->lpVtbl);
         HeapFree(GetProcessHeap(), 0, This);
         return 0;
     }
-    return newRef;
+    return newWrappedRef;
 }
 
 #ifndef NDEBUG
@@ -327,7 +369,7 @@ HRESULT STDMETHODCALLTYPE DD_CreateSurface(WrappedDirectDraw *This, LPDDSURFACED
 #endif
     }
 
-    *ppSurf = WRAP_Surface(real, attached);
+    *ppSurf = WRAP_Surface(real, attached, This);
     printf(("DD_CreateSurface: returned wrapped=0x%p, lpSurface=0x%p\n", *ppSurf, lpddsd->lpSurface));
     return S_OK;
 }
@@ -393,7 +435,7 @@ HRESULT STDMETHODCALLTYPE DD_DuplicateSurface(WrappedDirectDraw *This, WrappedSu
         printf(("DD_DuplicateSurface returned 0x%08lX\n", hr));
         return hr;
     }
-    *ppSurf = WRAP_Surface(real, NULL);
+    *ppSurf = WRAP_Surface(real, NULL, This);
     printf(("DD_DuplicateSurface: returned wrapped=0x%p\n", *ppSurf));
     return S_OK;
 }
@@ -433,10 +475,13 @@ HRESULT STDMETHODCALLTYPE DD_GetDisplayMode(WrappedDirectDraw *This, LPDDSURFACE
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE DD_GetFourCCCodes(WrappedDirectDraw *This, LPDWORD lpCodes, LPDWORD lpCount)
+HRESULT STDMETHODCALLTYPE DD_GetFourCCCodes(WrappedDirectDraw *This, LPDWORD lpdwCodes, LPDWORD lpdwCount)
 {
-    HRESULT hr = This->real->lpVtbl->GetFourCCCodes(This->real, lpCodes, lpCount);
-    printf(("DD_GetFourCCCodes: this=0x%p codes=0x%p count=0x%p result=0x%08lX\n", This, lpCodes, lpCount, hr));
+    char szdwCodes[DWORD_STRLEN], szdwCount[DWORD_STRLEN];
+    HRESULT hr = This->real->lpVtbl->GetFourCCCodes(This->real, lpdwCodes, lpdwCount);
+    dump_dword(szdwCodes, lpdwCodes);
+    dump_dword(szdwCount, lpdwCount);
+    printf(("DD_GetFourCCCodes: this=0x%p codes=%s count=%s result=0x%08lX\n", This, szdwCodes, szdwCount, hr));
     return hr;
 }
 
@@ -454,35 +499,41 @@ HRESULT STDMETHODCALLTYPE DD_GetGDISurface(WrappedDirectDraw *This, WrappedSurfa
         printf(("DD_GetGDISurface returned 0x%08lX\n", hr));
         return hr;
     }
-    *ppSurf = WRAP_Surface(real, NULL);
+    *ppSurf = WRAP_Surface(real, NULL, This);
     printf(("DD_GetGDISurface: returned wrapped=0x%p\n", *ppSurf));
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE DD_GetMonitorFrequency(WrappedDirectDraw *This, LPDWORD lpOut)
+HRESULT STDMETHODCALLTYPE DD_GetMonitorFrequency(WrappedDirectDraw *This, LPDWORD lpdwFreq)
 {
-    HRESULT hr = This->real->lpVtbl->GetMonitorFrequency(This->real, lpOut);
-    printf(("DD_GetMonitorFrequency: this=0x%p out=0x%p result=0x%08lX\n", This, lpOut, hr));
+    char szdwFreq[DWORD_STRLEN];
+    HRESULT hr = This->real->lpVtbl->GetMonitorFrequency(This->real, lpdwFreq);
+    dump_dword(szdwFreq, lpdwFreq);
+    printf(("DD_GetMonitorFrequency: this=0x%p freq=%s result=0x%08lX\n", This, szdwFreq, hr));
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE DD_GetScanLine(WrappedDirectDraw *This, LPDWORD lpOut)
+HRESULT STDMETHODCALLTYPE DD_GetScanLine(WrappedDirectDraw *This, LPDWORD lpdwScanLine)
 {
-    HRESULT hr = This->real->lpVtbl->GetScanLine(This->real, lpOut);
-    printf(("DD_GetScanLine: this=0x%p out=0x%p result=0x%08lX\n", This, lpOut, hr));
+    char szdwScanLine[DWORD_STRLEN];
+    HRESULT hr = This->real->lpVtbl->GetScanLine(This->real, lpdwScanLine);
+    dump_dword(szdwScanLine, lpdwScanLine);
+    printf(("DD_GetScanLine: this=0x%p scan_line=%s result=0x%08lX\n", This, szdwScanLine, hr));
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE DD_GetVerticalBlankStatus(WrappedDirectDraw *This, LPBOOL lpOut)
+HRESULT STDMETHODCALLTYPE DD_GetVerticalBlankStatus(WrappedDirectDraw *This, LPBOOL lpbStatus)
 {
-    HRESULT hr = This->real->lpVtbl->GetVerticalBlankStatus(This->real, lpOut);
-    printf(("DD_GetVerticalBlankStatus: this=0x%p out=0x%p result=0x%08lX\n", This, lpOut, hr));
+    char szbStatus[BOOL_STRLEN];
+    HRESULT hr = This->real->lpVtbl->GetVerticalBlankStatus(This->real, lpbStatus);
+    dump_bool(szbStatus, lpbStatus);
+    printf(("DD_GetVerticalBlankStatus: this=0x%p status=%s result=0x%08lX\n", This, szbStatus, hr));
     return hr;
 }
 
 HRESULT STDMETHODCALLTYPE DD_Initialize(WrappedDirectDraw *This, LPGUID lpGuid)
 {
-    char szGuid[39];
+    char szGuid[GUID_STRLEN];
     HRESULT hr = This->real->lpVtbl->Initialize(This->real, lpGuid);
     dump_guid(szGuid, lpGuid);
     printf(("DD_Initialize: this=0x%p guid=%s result=0x%08lX\n", This, szGuid, hr));
@@ -498,7 +549,7 @@ HRESULT STDMETHODCALLTYPE DD_RestoreDisplayMode(WrappedDirectDraw *This)
 
 HRESULT STDMETHODCALLTYPE DD_SetCooperativeLevel(WrappedDirectDraw *This, HWND hwnd, DWORD dwFlags)
 {
-    // HWND newHwnd = (dwFlags & DDSCL_NORMAL) && hwnd == NULL ? GetForegroundWindow() : hwnd;
+    // HWND newHwnd = (dwFlags & DDSCL_NORMAL) && !hwnd ? GetForegroundWindow() : hwnd;
     HRESULT hr = This->real->lpVtbl->SetCooperativeLevel(This->real, hwnd, dwFlags);
     printf(("DD_SetCooperativeLevel: this=0x%p hwnd=0x%p flags=0x%08lX result=0x%08lX\n", This, hwnd, dwFlags, hr));
     return hr;
@@ -511,6 +562,13 @@ HRESULT STDMETHODCALLTYPE DD_SetDisplayMode(WrappedDirectDraw *This, DWORD w, DW
     return hr;
 }
 
+HRESULT STDMETHODCALLTYPE DD_SetDisplayMode2(WrappedDirectDraw *This, DWORD w, DWORD h, DWORD bpp, DWORD dwRefreshRate, DWORD dwFlags)
+{
+    HRESULT hr = ((LPDIRECTDRAW2) (This->real))->lpVtbl->SetDisplayMode((LPDIRECTDRAW2) This->real, w, h, bpp, dwRefreshRate, dwFlags);
+    printf(("DD_SetDisplayMode: this=0x%p w=%lu h=%lu bpp=%lu refresh_rate=%lu flags=%lu result=0x%08lX\n", This, w, h, bpp, dwRefreshRate, dwFlags, hr));
+    return hr;
+}
+
 HRESULT STDMETHODCALLTYPE DD_WaitForVerticalBlank(WrappedDirectDraw *This, DWORD dwFlags, HANDLE hEvent)
 {
     HRESULT hr = This->real->lpVtbl->WaitForVerticalBlank(This->real, dwFlags, hEvent);
@@ -518,7 +576,17 @@ HRESULT STDMETHODCALLTYPE DD_WaitForVerticalBlank(WrappedDirectDraw *This, DWORD
     return hr;
 }
 
-WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real)
+HRESULT STDMETHODCALLTYPE DD_GetAvailableVidMem(WrappedDirectDraw *This, LPDDSCAPS lpddsCaps, LPDWORD lpdwTotal, LPDWORD lpdwFree)
+{
+    char szdwTotal[DWORD_STRLEN], szdwFree[DWORD_STRLEN];
+    HRESULT hr = ((LPDIRECTDRAW2) This->real)->lpVtbl->GetAvailableVidMem((LPDIRECTDRAW2) This->real, lpddsCaps, lpdwTotal, lpdwFree);
+    dump_dword(szdwTotal, lpdwTotal);
+    dump_dword(szdwFree, lpdwFree);
+    printf(("DD_GetAvailableVidMem: this=0x%p lpddscaps=0x%p total=%s free=%s result=0x%08lX\n", This, lpddsCaps, szdwTotal, szdwFree, hr));
+    return hr;
+}
+
+WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real, BOOL bDirectDraw2)
 {
     WrappedDirectDraw *w;
     IDirectDrawVtbl *lpVtbl;
@@ -531,59 +599,64 @@ WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real)
         return NULL;
     }
 
-    lpVtbl = (IDirectDrawVtbl *) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IDirectDrawVtbl));
+    lpVtbl = (IDirectDrawVtbl *) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IDirectDraw2Vtbl));
     if (!lpVtbl) {
         HeapFree(GetProcessHeap(), 0, w);
         return NULL;
     }
 
-    lpVtbl->QueryInterface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, REFIID, LPVOID *))DD_QueryInterface;
-    lpVtbl->AddRef = (ULONG (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_AddRef;
-    lpVtbl->Release = (ULONG (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_Release;
+    lpVtbl->QueryInterface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, REFIID, LPVOID *)) DD_QueryInterface;
+    lpVtbl->AddRef = (ULONG (STDMETHODCALLTYPE *)(LPDIRECTDRAW)) DD_AddRef;
+    lpVtbl->Release = (ULONG (STDMETHODCALLTYPE *)(LPDIRECTDRAW)) DD_Release;
 
-    lpVtbl->Compact = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_Compact;
-    lpVtbl->CreateClipper = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDIRECTDRAWCLIPPER *, IUnknown *))DD_CreateClipper;
-    lpVtbl->CreatePalette = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPPALETTEENTRY, LPDIRECTDRAWPALETTE *, IUnknown *))DD_CreatePalette;
-    lpVtbl->CreateSurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDSURFACEDESC, LPDIRECTDRAWSURFACE *, IUnknown *))DD_CreateSurface;
-    lpVtbl->DuplicateSurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDIRECTDRAWSURFACE, LPDIRECTDRAWSURFACE *))DD_DuplicateSurface;
-    lpVtbl->EnumDisplayModes = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDDSURFACEDESC, LPVOID, LPDDENUMMODESCALLBACK))DD_EnumDisplayModes;
-    lpVtbl->EnumSurfaces = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDDSURFACEDESC, LPVOID, LPDDENUMSURFACESCALLBACK))DD_EnumSurfaces;
-    lpVtbl->FlipToGDISurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_FlipToGDISurface;
-    lpVtbl->GetCaps = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDCAPS, LPDDCAPS))DD_GetCaps;
-    lpVtbl->GetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDSURFACEDESC))DD_GetDisplayMode;
-    lpVtbl->GetFourCCCodes = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD, LPDWORD))DD_GetFourCCCodes;
-    lpVtbl->GetGDISurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDIRECTDRAWSURFACE *))DD_GetGDISurface;
-    lpVtbl->GetMonitorFrequency = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD))DD_GetMonitorFrequency;
-    lpVtbl->GetScanLine = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD))DD_GetScanLine;
-    lpVtbl->GetVerticalBlankStatus = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPBOOL))DD_GetVerticalBlankStatus;
-    lpVtbl->Initialize = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPGUID))DD_Initialize;
-    lpVtbl->RestoreDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW))DD_RestoreDisplayMode;
-    lpVtbl->SetCooperativeLevel = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, HWND, DWORD))DD_SetCooperativeLevel;
-    lpVtbl->SetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, DWORD, DWORD))DD_SetDisplayMode;
-    lpVtbl->WaitForVerticalBlank = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, HANDLE))DD_WaitForVerticalBlank;
+    lpVtbl->Compact = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW)) DD_Compact;
+    lpVtbl->CreateClipper = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDIRECTDRAWCLIPPER *, IUnknown *)) DD_CreateClipper;
+    lpVtbl->CreatePalette = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPPALETTEENTRY, LPDIRECTDRAWPALETTE *, IUnknown *)) DD_CreatePalette;
+    lpVtbl->CreateSurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDSURFACEDESC, LPDIRECTDRAWSURFACE *, IUnknown *)) DD_CreateSurface;
+    lpVtbl->DuplicateSurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDIRECTDRAWSURFACE, LPDIRECTDRAWSURFACE *)) DD_DuplicateSurface;
+    lpVtbl->EnumDisplayModes = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDDSURFACEDESC, LPVOID, LPDDENUMMODESCALLBACK)) DD_EnumDisplayModes;
+    lpVtbl->EnumSurfaces = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, LPDDSURFACEDESC, LPVOID, LPDDENUMSURFACESCALLBACK)) DD_EnumSurfaces;
+    lpVtbl->FlipToGDISurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW)) DD_FlipToGDISurface;
+    lpVtbl->GetCaps = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDCAPS, LPDDCAPS)) DD_GetCaps;
+    lpVtbl->GetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDDSURFACEDESC)) DD_GetDisplayMode;
+    lpVtbl->GetFourCCCodes = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD, LPDWORD)) DD_GetFourCCCodes;
+    lpVtbl->GetGDISurface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDIRECTDRAWSURFACE *)) DD_GetGDISurface;
+    lpVtbl->GetMonitorFrequency = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD)) DD_GetMonitorFrequency;
+    lpVtbl->GetScanLine = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPDWORD)) DD_GetScanLine;
+    lpVtbl->GetVerticalBlankStatus = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPBOOL)) DD_GetVerticalBlankStatus;
+    lpVtbl->Initialize = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, LPGUID)) DD_Initialize;
+    lpVtbl->RestoreDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW)) DD_RestoreDisplayMode;
+    lpVtbl->SetCooperativeLevel = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, HWND, DWORD)) DD_SetCooperativeLevel;
+    if (bDirectDraw2) {
+        ((IDirectDraw2Vtbl *) lpVtbl)->SetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW2, DWORD, DWORD, DWORD, DWORD, DWORD)) DD_SetDisplayMode2;
+    } else {
+        lpVtbl->SetDisplayMode = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, DWORD, DWORD)) DD_SetDisplayMode;
+    }
+    lpVtbl->WaitForVerticalBlank = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW, DWORD, HANDLE)) DD_WaitForVerticalBlank;
+    ((IDirectDraw2Vtbl *) lpVtbl)->GetAvailableVidMem = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAW2, LPDDSCAPS, LPDWORD, LPDWORD)) DD_GetAvailableVidMem;
 
     w->lpVtbl = lpVtbl;
     w->real = real;
     w->ref = 1;
-
     return w;
 }
 
 ULONG STDMETHODCALLTYPE Surf_AddRef(WrappedSurface *This)
 {
-    LONG newRef;
-    printf(("Surf_AddRef: this=0x%p\n", This));
-    newRef = InterlockedIncrement(&This->ref);
-    This->real->lpVtbl->AddRef(This->real);
-    if (This->attached) {
-        This->attached->lpVtbl->AddRef(This->attached);
-    }
-    return newRef;
+    LONG newRealRef = This->real->lpVtbl->AddRef(This->real);
+    LONG newAttachedRef = This->attached ? This->attached->lpVtbl->AddRef(This->attached) : 0;
+    LONG newWrappedRef = InterlockedIncrement(&This->ref);
+    printf(("Surf_AddRef: this=0x%p new_wrapped_ref=%ld real=0x%p new_real_ref=%ld attached=0x%p new_attached_ref=%ld\n",
+            This, newWrappedRef, This->real, newRealRef, This->attached, newAttachedRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    UNREFERENCED_PARAMETER(newAttachedRef);
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Surf_QueryInterface(WrappedSurface *This, REFIID riid, LPVOID *ppvObj)
 {
-    char szGuid[39];
+    HRESULT hr;
+    char szGuid[GUID_STRLEN];
     dump_guid(szGuid, (LPGUID) riid);
     printf(("Surf_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
@@ -597,27 +670,40 @@ HRESULT STDMETHODCALLTYPE Surf_QueryInterface(WrappedSurface *This, REFIID riid,
         *ppvObj = This;
         return S_OK;
     }
-
-    return This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
+    hr = This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
+    // Getting IDirectDrawSurface2/3 increases This->real's ref in cnc-ddraw 1.3.8.0, which is different from DD_QueryInterface
+    /*
+    This->real->lpVtbl->AddRef(This->real);
+    LONG nRef = This->real->lpVtbl->Release(This->real);
+    printf(("Surf_QueryInterface: real_ref=%ld, wrapped_ref=%ld\n", This, nRef, This->ref));
+    */
+    if (SUCCEEDED(hr) && (IsEqualIID(riid, &IID_IDirectDrawSurface2) || IsEqualIID(riid, &IID_IDirectDrawSurface3))) {
+        WrappedSurface *pWrapped = WRAP_Surface((LPDIRECTDRAWSURFACE) *ppvObj, NULL, This->lpWrappedDD);
+        // This can fix ref deviation in cnc-ddraw 1.3.8.0
+        // InterlockedIncrement(&This->ref);
+        printf(("Surf_QueryInterface: new_real=0x%p, new_wrapped=0x%p\n", *ppvObj, pWrapped));
+        *ppvObj = pWrapped;
+    }
+    return hr;
 }
 
 ULONG STDMETHODCALLTYPE Surf_Release(WrappedSurface *This)
 {
-    LONG newRef;
-    if (This->attached) {
-        newRef = This->attached->lpVtbl->Release(This->attached);
-        printf(("Surf_Release: attached=0x%p, ref=%ld\n", This->attached, newRef));
-    }
-    newRef = This->real->lpVtbl->Release(This->real);
-    printf(("Surf_Release: real=0x%p, ref=%ld\n", This->real, newRef));
-    newRef = InterlockedDecrement(&This->ref);
-    printf(("Surf_Release: this=0x%p, ref=%ld\n", This, newRef));
-    if (newRef == 0) {
+    LONG newAttachedRef = This->attached ? This->attached->lpVtbl->Release(This->attached) : 0;
+    LONG newRealRef = This->real->lpVtbl->Release(This->real);
+    LONG newWrappedRef = InterlockedDecrement(&This->ref);
+    printf(("Surf_Release: this=0x%p new_wrapped_ref=%ld attached=0x%p new_attached_ref=%ld real=0x%p new_real_ref=%ld\n",
+            This, newWrappedRef, This->attached, newAttachedRef, This->real, newRealRef));
+    UNREFERENCED_PARAMETER(newAttachedRef);
+    UNREFERENCED_PARAMETER(newRealRef);
+    if (newWrappedRef == 0) {
+        // increment / decrement on DD's ref blocks DD's full release and blocks next DirectDrawCreate in cnc-ddraw 1.3.8.0
+        // DD_Release(This->lpWrappedDD);
         HeapFree(GetProcessHeap(), 0, This->lpVtbl);
         HeapFree(GetProcessHeap(), 0, This);
         return 0;
     }
-    return newRef;
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Surf_AddAttachedSurface(WrappedSurface *This, WrappedSurface *lpSurf)
@@ -629,20 +715,20 @@ HRESULT STDMETHODCALLTYPE Surf_AddAttachedSurface(WrappedSurface *This, WrappedS
 
 HRESULT STDMETHODCALLTYPE Surf_AddOverlayDirtyRect(WrappedSurface *This, LPRECT lpRect)
 {
+    char szRect[RECT_STRLEN];
     HRESULT hr = This->real->lpVtbl->AddOverlayDirtyRect(This->real, lpRect);
-    if (lpRect) {
-        printf(("Surf_AddOverlayDirtyRect: this=0x%p rect=(%ld,%ld)-(%ld,%ld) result=0x%08lX\n", This, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, hr));
-    } else {
-        printf(("Surf_AddOverlayDirtyRect: this=0x%p rect=NULL result=0x%08lX\n", This, hr));
-    }
+    dump_rect(szRect, lpRect);
+    printf(("Surf_AddOverlayDirtyRect: this=0x%p rect=%s result=0x%08lX\n", This, szRect, hr));
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Surf_Blt(WrappedSurface *This, LPRECT dstRect, WrappedSurface *wrappedSrc, LPRECT srcRect, DWORD dwFlags, LPDDBLTFX lpBltFx)
+HRESULT STDMETHODCALLTYPE Surf_Blt(WrappedSurface *This, LPRECT lpDstRect, WrappedSurface *wrappedSrc, LPRECT lpSrcRect, DWORD dwFlags, LPDDBLTFX lpBltFx)
 {
-    // TODO dump dstRect and srcRect
-    HRESULT hr = This->real->lpVtbl->Blt(This->real, dstRect, wrappedSrc->real, srcRect, dwFlags, lpBltFx);
-    printf(("Surf_Blt: this=0x%p dst_rect=0x%p src_wrapped=0x%p src_rect=0x%p flags=0x%08lX bltfx=0x%p result=0x%08lX\n", This, dstRect, wrappedSrc, srcRect, dwFlags, lpBltFx, hr));
+    char szDstRect[RECT_STRLEN], szSrcRect[RECT_STRLEN];
+    HRESULT hr = This->real->lpVtbl->Blt(This->real, lpDstRect, wrappedSrc->real, lpSrcRect, dwFlags, lpBltFx);
+    dump_rect(szDstRect, lpDstRect);
+    dump_rect(szSrcRect, lpSrcRect);
+    printf(("Surf_Blt: this=0x%p dst_rect=%s src_wrapped=0x%p src_rect=%s flags=0x%08lX bltfx=0x%p result=0x%08lX\n", This, szDstRect, wrappedSrc, szSrcRect, dwFlags, lpBltFx, hr));
     return hr;
 }
 
@@ -653,10 +739,12 @@ HRESULT STDMETHODCALLTYPE Surf_BltBatch(WrappedSurface *This, LPDDBLTBATCH lpBat
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Surf_BltFast(WrappedSurface *This, DWORD x, DWORD y, WrappedSurface *src, LPRECT srcRect, DWORD dwFlags)
+HRESULT STDMETHODCALLTYPE Surf_BltFast(WrappedSurface *This, DWORD x, DWORD y, WrappedSurface *src, LPRECT lpRect, DWORD dwFlags)
 {
-    HRESULT hr = This->real->lpVtbl->BltFast(This->real, x, y, src->real, srcRect, dwFlags);
-    printf(("Surf_BltFast: this=0x%p x=%lu y=%lu src_wrapped=0x%p src_rect=0x%p flags=0x%08lX result=0x%08lX\n", This, x, y, src, srcRect, dwFlags, hr));
+    char szRect[RECT_STRLEN];
+    HRESULT hr = This->real->lpVtbl->BltFast(This->real, x, y, src->real, lpRect, dwFlags);
+    dump_rect(szRect, lpRect);
+    printf(("Surf_BltFast: this=0x%p x=%lu y=%lu src_wrapped=0x%p src_rect=0x%p flags=0x%08lX result=0x%08lX\n", This, x, y, src, szRect, dwFlags, hr));
     return hr;
 }
 
@@ -684,7 +772,7 @@ HRESULT STDMETHODCALLTYPE Surf_EnumOverlayZOrders(WrappedSurface *This, DWORD dw
 
 HRESULT STDMETHODCALLTYPE Surf_Flip(WrappedSurface *This, WrappedSurface *target, DWORD dwFlags)
 {
-    HRESULT hr = This->real->lpVtbl->Flip(This->real, target == NULL ? NULL : target->real, dwFlags);
+    HRESULT hr = This->real->lpVtbl->Flip(This->real, target ? target->real : NULL, dwFlags);
     printf(("Surf_Flip: surface=0x%p target_wrapped=0x%p flags=0x%08lX result=0x%08lX\n", This, target, dwFlags, hr));
     return hr;
 }
@@ -694,6 +782,11 @@ HRESULT STDMETHODCALLTYPE Surf_GetAttachedSurface(WrappedSurface *This, LPDDSCAP
     LPDIRECTDRAWSURFACE real;
     HRESULT hr;
     printf(("Surf_GetAttachedSurface: this=0x%p caps=0x%p out_wrapped=0x%p\n", This, caps, ppSurf));
+#ifndef NDEBUG
+    if (caps) {
+        dump_ddscaps(caps->dwCaps);
+    }
+#endif
     if (!ppSurf) {
         return DDERR_INVALIDPARAMS;
     }
@@ -703,7 +796,7 @@ HRESULT STDMETHODCALLTYPE Surf_GetAttachedSurface(WrappedSurface *This, LPDDSCAP
         printf(("Surf_GetAttachedSurface returned 0x%08lX\n", hr));
         return hr;
     }
-    *ppSurf = WRAP_Surface(real, NULL);
+    *ppSurf = WRAP_Surface(real, NULL, This->lpWrappedDD);
     printf(("Surf_GetAttachedSurface: returned wrapped=0x%p\n", *ppSurf));
     return S_OK;
 }
@@ -721,7 +814,9 @@ HRESULT STDMETHODCALLTYPE Surf_GetCaps(WrappedSurface *This, LPDDSCAPS caps)
     printf(("Surf_GetCaps: this=0x%p caps=0x%p\n", This, caps));
     hr = This->real->lpVtbl->GetCaps(This->real, caps);
 #ifndef NDEBUG
-    dump_ddscaps(caps->dwCaps);
+    if (caps) {
+        dump_ddscaps(caps->dwCaps);
+    }
 #endif
     // clear DDSCAPS_SYSTEMMEMORY can cheat ra95
     // see https://github.com/electronicarts/CnC_Red_Alert/blob/main/CODE/STARTUP.CPP#L485
@@ -838,11 +933,9 @@ HRESULT STDMETHODCALLTYPE Surf_IsLost(WrappedSurface *This)
 HRESULT STDMETHODCALLTYPE Surf_Lock(WrappedSurface *This, LPRECT lpRect, LPDDSURFACEDESC lpddsd, DWORD dwFlags, HANDLE hEvent)
 {
     HRESULT hr;
-    if (lpRect) {
-        printf(("Surf_Lock: this=0x%p rect=(%ld,%ld)-(%ld,%ld) desc=0x%p flags=0x%08lX event=0x%p\n", This, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, lpddsd, dwFlags, hEvent));
-    } else {
-        printf(("Surf_Lock: this=0x%p rect=NULL desc=0x%p flags=0x%08lX event=0x%p\n", This, lpddsd, dwFlags, hEvent));
-    }
+    char szRect[RECT_STRLEN];
+    dump_rect(szRect, lpRect);
+    printf(("Surf_Lock: this=0x%p rect=%s desc=0x%p flags=0x%08lX event=0x%p\n", This, szRect, lpddsd, dwFlags, hEvent));
     if (This->attached) {
         hr = This->attached->lpVtbl->Lock(This->attached, lpRect, lpddsd, dwFlags, hEvent);
         printf(("Surf_Lock: attached=0x%p lpSurface=0x%p result=0x%08lX\n", This->attached, lpddsd->lpSurface, hr));
@@ -890,7 +983,7 @@ HRESULT STDMETHODCALLTYPE Surf_SetOverlayPosition(WrappedSurface *This, LONG x, 
 
 HRESULT STDMETHODCALLTYPE Surf_SetPalette(WrappedSurface *This, WrappedPalette *pPal)
 {
-    LPDIRECTDRAWPALETTE realPal = pPal == NULL ? NULL : pPal->real;
+    LPDIRECTDRAWPALETTE realPal = pPal ? pPal->real : NULL;
     HRESULT hr = This->real->lpVtbl->SetPalette(This->real, realPal);
     if (This->attached) {
         This->attached->lpVtbl->SetPalette(This->attached, realPal);
@@ -902,11 +995,9 @@ HRESULT STDMETHODCALLTYPE Surf_SetPalette(WrappedSurface *This, WrappedPalette *
 HRESULT STDMETHODCALLTYPE Surf_Unlock(WrappedSurface *This, LPRECT lpRect)
 {
     HRESULT hr, hr2;
-    if (lpRect) {
-        printf(("Surf_Unlock: this=0x%p rect=(%ld,%ld)-(%ld,%ld)\n", This, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom));
-    } else {
-        printf(("Surf_Unlock: this=0x%p rect=NULL\n", This));
-    }
+    char szRect[RECT_STRLEN];
+    dump_rect(szRect, lpRect);
+    printf(("Surf_Unlock: this=0x%p rect=%s\n", This, szRect));
     if (This->attached) {
         hr = This->attached->lpVtbl->Unlock(This->attached, lpRect);
         UNREFERENCED_PARAMETER(hr2);
@@ -926,11 +1017,13 @@ HRESULT STDMETHODCALLTYPE Surf_Unlock(WrappedSurface *This, LPRECT lpRect)
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Surf_UpdateOverlay(WrappedSurface *This, LPRECT srcRect, WrappedSurface *dest, LPRECT destRect, DWORD dwFlags, LPDDOVERLAYFX fx)
+HRESULT STDMETHODCALLTYPE Surf_UpdateOverlay(WrappedSurface *This, LPRECT lpSrcRect, WrappedSurface *dst, LPRECT lpDstRect, DWORD dwFlags, LPDDOVERLAYFX fx)
 {
-    // TODO dump dstRect and srcRect
-    HRESULT hr = This->real->lpVtbl->UpdateOverlay(This->real, srcRect, dest->real, destRect, dwFlags, fx);
-    printf(("Surf_UpdateOverlay: this=0x%p srcRect=0x%p dest_wrapped=0x%p destRect=0x%p flags=0x%08lX fx=0x%p result=0x%08lX\n", This, srcRect, dest, destRect, dwFlags, fx, hr));
+    char szDstRect[RECT_STRLEN], szSrcRect[RECT_STRLEN];
+    HRESULT hr = This->real->lpVtbl->UpdateOverlay(This->real, lpSrcRect, dst->real, lpDstRect, dwFlags, fx);
+    dump_rect(szDstRect, lpDstRect);
+    dump_rect(szSrcRect, lpSrcRect);
+    printf(("Surf_UpdateOverlay: this=0x%p src_rect=%s dst_wrapped=0x%p dst_rect=%s flags=0x%08lX fx=0x%p result=0x%08lX\n", This, szSrcRect, dst, szDstRect, dwFlags, fx, hr));
     return hr;
 }
 
@@ -948,7 +1041,35 @@ HRESULT STDMETHODCALLTYPE Surf_UpdateOverlayZOrder(WrappedSurface *This, DWORD d
     return hr;
 }
 
-WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attached)
+HRESULT STDMETHODCALLTYPE Surf_GetDDInterface(WrappedSurface *This, LPVOID *lplpDD)
+{
+    DD_AddRef(This->lpWrappedDD);
+    printf(("Surf_GetDDInterface: this=0x%p wrapped_dd=0x%p\n", This, This->lpWrappedDD));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE Surf_PageLock(WrappedSurface *This, DWORD dwFlags)
+{
+    HRESULT hr = ((LPDIRECTDRAWSURFACE2) This->real)->lpVtbl->PageLock((LPDIRECTDRAWSURFACE2) This->real, dwFlags);
+    printf(("Surf_PageLock: this=0x%p flag=0x%08lX result=0x%08lX\n", This, dwFlags, hr));
+    return hr;
+}
+
+HRESULT STDMETHODCALLTYPE Surf_PageUnlock(WrappedSurface *This, DWORD dwFlags)
+{
+    HRESULT hr = ((LPDIRECTDRAWSURFACE2) This->real)->lpVtbl->PageUnlock((LPDIRECTDRAWSURFACE2) This->real, dwFlags);
+    printf(("Surf_PageUnlock: this=0x%p flag=0x%08lX result=0x%08lX\n", This, dwFlags, hr));
+    return hr;
+}
+
+HRESULT STDMETHODCALLTYPE Surf_SetSurfaceDesc(WrappedSurface *This, LPDDSURFACEDESC lpddsd, DWORD dwFlags)
+{
+    HRESULT hr = ((LPDIRECTDRAWSURFACE3) This->real)->lpVtbl->SetSurfaceDesc((LPDIRECTDRAWSURFACE3) This->real, lpddsd, dwFlags);
+    printf(("Surf_SetSurfaceDesc: this=0x%p desc=0x%p flag=0x%08lX result=0x%08lX\n", This, lpddsd, dwFlags, hr));
+    return hr;
+}
+
+WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attached, WrappedDirectDraw *lpWrappedDD)
 {
     WrappedSurface *w;
     IDirectDrawSurfaceVtbl *lpVtbl;
@@ -961,16 +1082,11 @@ WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attac
         return NULL;
     }
 
-    lpVtbl = (IDirectDrawSurfaceVtbl *) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IDirectDrawSurfaceVtbl));
+    lpVtbl = (IDirectDrawSurfaceVtbl *) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IDirectDrawSurface3Vtbl));
     if (!lpVtbl) {
         HeapFree(GetProcessHeap(), 0, w);
         return NULL;
     }
-
-    w->lpVtbl = lpVtbl;
-    w->real = real;
-    w->attached = attached;
-    w->ref = 1;
 
     lpVtbl->QueryInterface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE, REFIID, LPVOID *)) Surf_QueryInterface;
     lpVtbl->AddRef = (ULONG (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE)) Surf_AddRef;
@@ -1009,22 +1125,33 @@ WrappedSurface *WRAP_Surface(LPDIRECTDRAWSURFACE real, LPDIRECTDRAWSURFACE attac
     lpVtbl->UpdateOverlay = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE, LPRECT, LPDIRECTDRAWSURFACE, LPRECT, DWORD, LPDDOVERLAYFX)) Surf_UpdateOverlay;
     lpVtbl->UpdateOverlayDisplay = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE, DWORD)) Surf_UpdateOverlayDisplay;
     lpVtbl->UpdateOverlayZOrder = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE, DWORD, LPDIRECTDRAWSURFACE)) Surf_UpdateOverlayZOrder;
+    ((IDirectDrawSurface2Vtbl *) lpVtbl)->GetDDInterface = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE2, LPVOID *)) Surf_GetDDInterface;
+    ((IDirectDrawSurface2Vtbl *) lpVtbl)->PageLock = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE2, DWORD)) Surf_PageLock;
+    ((IDirectDrawSurface2Vtbl *) lpVtbl)->PageUnlock = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE2, DWORD)) Surf_PageUnlock;
+    ((IDirectDrawSurface3Vtbl *) lpVtbl)->SetSurfaceDesc = (HRESULT (STDMETHODCALLTYPE *)(LPDIRECTDRAWSURFACE3, LPDDSURFACEDESC, DWORD)) Surf_SetSurfaceDesc;
 
+    w->lpVtbl = lpVtbl;
+    w->real = real;
+    w->attached = attached;
+    w->lpWrappedDD = lpWrappedDD;
+    // increment / decrement on DD's ref blocks DD's full release and blocks next DirectDrawCreate in cnc-ddraw 1.3.8.0
+    // DD_AddRef(lpWrappedDD);
+    w->ref = 1;
     return w;
 }
 
 ULONG STDMETHODCALLTYPE Clip_AddRef(WrappedClipper *This)
 {
-    LONG newRef;
-    printf(("Clip_AddRef: this=0x%p\n", This));
-    newRef = InterlockedIncrement(&This->ref);
-    This->real->lpVtbl->AddRef(This->real);
-    return newRef;
+    LONG newRealRef = This->real->lpVtbl->AddRef(This->real);
+    LONG newWrappedRef = InterlockedIncrement(&This->ref);
+    printf(("Clip_AddRef: this=0x%p new_wrapped_ref=%ld new_real_ref=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Clip_QueryInterface(WrappedClipper *This, REFIID riid, LPVOID *ppvObj)
 {
-    char szGuid[39];
+    char szGuid[GUID_STRLEN];
     dump_guid(szGuid, (LPGUID) riid);
     printf(("Clip_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
@@ -1038,32 +1165,29 @@ HRESULT STDMETHODCALLTYPE Clip_QueryInterface(WrappedClipper *This, REFIID riid,
         *ppvObj = This;
         return S_OK;
     }
-
     return This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
 }
 
 ULONG STDMETHODCALLTYPE Clip_Release(WrappedClipper *This)
 {
-    LONG newRef;
-    printf(("Clip_Release: this=0x%p\n", This));
-    This->real->lpVtbl->Release(This->real);
-    newRef = InterlockedDecrement(&This->ref);
-    if (newRef == 0) {
+    LONG newRealRef = This->real->lpVtbl->Release(This->real);
+    LONG newWrappedRef = InterlockedDecrement(&This->ref);
+    printf(("Clip_Release: this=0x%p newWrappedRef=%ld newRealRef=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    if (newWrappedRef == 0) {
         HeapFree(GetProcessHeap(), 0, This->lpVtbl);
         HeapFree(GetProcessHeap(), 0, This);
         return 0;
     }
-    return newRef;
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Clip_GetClipList(WrappedClipper *This, LPRECT lpRect, LPRGNDATA lpData, LPDWORD lpSize)
 {
+    char szRect[RECT_STRLEN];
     HRESULT hr = This->real->lpVtbl->GetClipList(This->real, lpRect, lpData, lpSize);
-    if (lpRect) {
-        printf(("Clip_GetClipList: this=0x%p rect=(%ld,%ld)-(%ld,%ld) data=0x%p size=0x%p result=0x%08lX\n", This, lpRect->left, lpRect->top, lpRect->right, lpRect->bottom, lpData, lpSize, hr));
-    } else {
-        printf(("Clip_GetClipList: this=0x%p rect=NULL data=0x%p size=0x%p result=0x%08lX\n", This, lpData, lpSize, hr));
-    }
+    dump_rect(szRect, lpRect);
+    printf(("Clip_GetClipList: this=0x%p rect=%s data=0x%p size=0x%p result=0x%08lX\n", This, szRect, lpData, lpSize, hr));
     return hr;
 }
 
@@ -1081,10 +1205,12 @@ HRESULT STDMETHODCALLTYPE Clip_Initialize(WrappedClipper *This, WrappedDirectDra
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Clip_IsClipListChanged(WrappedClipper *This, LPBOOL lpChanged)
+HRESULT STDMETHODCALLTYPE Clip_IsClipListChanged(WrappedClipper *This, LPBOOL lpbChanged)
 {
-    HRESULT hr = This->real->lpVtbl->IsClipListChanged(This->real, lpChanged);
-    printf(("Clip_IsClipListChanged: this=0x%p changed=0x%p result=0x%08lX\n", This, lpChanged, hr));
+    char szbChanged[BOOL_STRLEN];
+    HRESULT hr = This->real->lpVtbl->IsClipListChanged(This->real, lpbChanged);
+    dump_bool(szbChanged, lpbChanged);
+    printf(("Clip_IsClipListChanged: this=0x%p changed=%s result=0x%08lX\n", This, szbChanged, hr));
     return hr;
 }
 
@@ -1134,22 +1260,21 @@ WrappedClipper *WRAP_Clipper(LPDIRECTDRAWCLIPPER real)
     w->lpVtbl = lpVtbl;
     w->real = real;
     w->ref = 1;
-
     return w;
 }
 
 ULONG STDMETHODCALLTYPE Pal_AddRef(WrappedPalette *This)
 {
-    LONG newRef;
-    printf(("Pal_AddRef: this=0x%p\n", This));
-    newRef = InterlockedIncrement(&This->ref);
-    This->real->lpVtbl->AddRef(This->real);
-    return newRef;
+    LONG newRealRef = This->real->lpVtbl->AddRef(This->real);
+    LONG newWrappedRef = InterlockedIncrement(&This->ref);
+    printf(("Pal_AddRef: this=0x%p new_wrapped_ref=%ld new_real_ref=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Pal_QueryInterface(WrappedPalette *This, REFIID riid, LPVOID *ppvObj)
 {
-    char szGuid[39];
+    char szGuid[GUID_STRLEN];
     dump_guid(szGuid, (LPGUID) riid);
     printf(("Pal_QueryInterface: this=0x%p riid=%s out=0x%p\n", This, szGuid, ppvObj));
 
@@ -1163,22 +1288,21 @@ HRESULT STDMETHODCALLTYPE Pal_QueryInterface(WrappedPalette *This, REFIID riid, 
         *ppvObj = This;
         return S_OK;
     }
-
     return This->real->lpVtbl->QueryInterface(This->real, riid, ppvObj);
 }
 
 ULONG STDMETHODCALLTYPE Pal_Release(WrappedPalette *This)
 {
-    LONG newRef;
-    printf(("Pal_Release: this=0x%p\n", This));
-    This->real->lpVtbl->Release(This->real);
-    newRef = InterlockedDecrement(&This->ref);
-    if (newRef == 0) {
+    LONG newRealRef = This->real->lpVtbl->Release(This->real);
+    LONG newWrappedRef = InterlockedDecrement(&This->ref);
+    printf(("Pal_Release: this=0x%p new_wrapped_ref=%ld new_real_ref=%ld\n", This, newWrappedRef, newRealRef));
+    UNREFERENCED_PARAMETER(newRealRef);
+    if (newWrappedRef == 0) {
         HeapFree(GetProcessHeap(), 0, This->lpVtbl);
         HeapFree(GetProcessHeap(), 0, This);
         return 0;
     }
-    return newRef;
+    return newWrappedRef;
 }
 
 HRESULT STDMETHODCALLTYPE Pal_GetCaps(WrappedPalette *This, LPDWORD pdw)
@@ -1239,7 +1363,6 @@ WrappedPalette *WRAP_Palette(LPDIRECTDRAWPALETTE real)
     w->lpVtbl = lpVtbl;
     w->real = real;
     w->ref = 1;
-
     return w;
 }
 
@@ -1247,7 +1370,7 @@ HRESULT WINAPI DirectDrawCreate(LPGUID lpGuid, LPDIRECTDRAW *ppDD, IUnknown *iu)
 {
     LPDIRECTDRAW realDD;
     HRESULT hr;
-    char szGuid[39];
+    char szGuid[GUID_STRLEN];
     dump_guid(szGuid, lpGuid);
     printf(("DirectDrawCreate: entry guid=%s out_wrapped=0x%p pUnkOuter=0x%p\n", szGuid, ppDD, iu));
 
@@ -1264,7 +1387,7 @@ HRESULT WINAPI DirectDrawCreate(LPGUID lpGuid, LPDIRECTDRAW *ppDD, IUnknown *iu)
         return hr;
     }
 
-    *ppDD = (LPDIRECTDRAW) WRAP_DirectDraw(realDD);
+    *ppDD = (LPDIRECTDRAW) WRAP_DirectDraw(realDD, FALSE);
     printf(("DirectDrawCreate: returned wrapped=0x%p\n", *ppDD));
     return S_OK;
 }
@@ -1305,7 +1428,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
             g_hRealDDraw = NULL;
         }
 #ifndef NDEBUG
-        if (g_fpDebug != NULL) {
+        if (g_fpDebug) {
             fclose(g_fpDebug);
             g_fpDebug = NULL;
             g_fdDebug = -1;
