@@ -1028,6 +1028,32 @@ HRESULT __stdcall ddraw_surface_UpdateOverlayZOrder(IDirectDrawSurfaceImpl *This
     return DD_OK;
 }
 
+HRESULT __stdcall ddraw_surface_GetDDInterface(IDirectDrawSurfaceImpl *This, LPVOID *lplpDD)
+{
+    printf("DirectDrawSurface::GetDDInterface(This=%p, ...) ???\n", This);
+    *lplpDD = ddraw;
+    IDirectDraw_AddRef(ddraw);
+    return DD_OK;
+}
+
+HRESULT __stdcall ddraw_surface_PageLock(IDirectDrawSurfaceImpl *This, DWORD dwFlags)
+{
+    printf("DirectDrawSurface::PageLock(This=%p, ...) ???\n", This);
+    return DD_OK;
+}
+
+HRESULT __stdcall ddraw_surface_PageUnlock(IDirectDrawSurfaceImpl *This, DWORD dwFlags)
+{
+    printf("DirectDrawSurface::PageUnlock(This=%p, ...) ???\n", This);
+    return DD_OK;
+}
+
+HRESULT __stdcall ddraw_surface_SetSurfaceDesc(IDirectDrawSurfaceImpl *This, LPDDSURFACEDESC lpddsd, DWORD dwFlags)
+{
+    printf("DirectDrawSurface::SetSurfaceDesc(This=%p, ...) ???\n", This);
+    return DD_OK;
+}
+
 struct IDirectDrawSurfaceImplVtbl siface =
 {
     /* IUnknown */
@@ -1067,7 +1093,11 @@ struct IDirectDrawSurfaceImplVtbl siface =
     ddraw_surface_Unlock,
     ddraw_surface_UpdateOverlay,
     ddraw_surface_UpdateOverlayDisplay,
-    ddraw_surface_UpdateOverlayZOrder
+    ddraw_surface_UpdateOverlayZOrder,
+    ddraw_surface_GetDDInterface,
+    ddraw_surface_PageLock,
+    ddraw_surface_PageUnlock,
+    ddraw_surface_SetSurfaceDesc
 };
 
 HRESULT __stdcall ddraw_CreateSurface(IDirectDrawImpl *This, LPDDSURFACEDESC lpDDSurfaceDesc, LPDIRECTDRAWSURFACE FAR *lpDDSurface, IUnknown FAR * unkOuter)

@@ -1447,9 +1447,13 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
 
     printf("DirectDraw::SetCooperativeLevel(This=%p, hWnd=0x%08X, dwFlags=0x%08X)\n", This, (unsigned int)hWnd, (unsigned int)dwFlags);
 
+    // NFS3 calls IDirectDraw with DDSCL_NORMAL, then calls IDirectDraw2 with DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE
+    /*
     if (dwFlags & DDSCL_NORMAL) {
         return DDERR_UNSUPPORTED;
     }
+    */
+
     /* Red Alert for some weird reason does this on Windows XP */
     if(hWnd == NULL)
     {
@@ -1512,6 +1516,18 @@ HRESULT __stdcall ddraw_WaitForVerticalBlank(IDirectDrawImpl *This, DWORD a, HAN
 #if _DEBUG_X
     printf("DirectDraw::WaitForVerticalBlank(This=%p, ...) ???\n", This);
 #endif
+    return DD_OK;
+}
+
+HRESULT __stdcall ddraw_GetAvailableVidMem(IDirectDrawImpl *This, LPDDSCAPS lpddsCaps, LPDWORD lpdwTotal, LPDWORD lpdwFree)
+{
+    printf("DirectDraw::GetAvailableVidMem(This=%p, ...) ???\n", This);
+    if (lpdwTotal) {
+        *lpdwTotal = 16777216;
+    }
+    if (lpdwFree) {
+        *lpdwFree = 16777216;
+    }
     return DD_OK;
 }
 
@@ -1669,7 +1685,9 @@ struct IDirectDrawImplVtbl iface =
     ddraw_RestoreDisplayMode,
     ddraw_SetCooperativeLevel,
     {ddraw_SetDisplayMode},
-    ddraw_WaitForVerticalBlank
+    ddraw_WaitForVerticalBlank,
+    // IDirectDraw2
+    ddraw_GetAvailableVidMem
 };
 
 HRESULT WINAPI DirectDrawEnumerateA(LPDDENUMCALLBACK lpCallback, LPVOID lpContext)

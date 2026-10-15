@@ -168,6 +168,7 @@ struct IDirectDrawImplVtbl
     };
     
     HRESULT(__stdcall *WaitForVerticalBlank)(IDirectDrawImpl *, DWORD, HANDLE);
+    HRESULT(__stdcall *GetAvailableVidMem)(IDirectDrawImpl *, LPDDSCAPS, LPDWORD, LPDWORD);
 };
 
 typedef enum PROCESS_DPI_AWARENESS {

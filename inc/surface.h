@@ -95,6 +95,12 @@ extern struct IDirectDrawSurfaceImplVtbl
     HRESULT (__stdcall *UpdateOverlay)(IDirectDrawSurfaceImpl*, LPRECT, LPDIRECTDRAWSURFACE,LPRECT,DWORD, LPDDOVERLAYFX);
     HRESULT (__stdcall *UpdateOverlayDisplay)(IDirectDrawSurfaceImpl*, DWORD);
     HRESULT (__stdcall *UpdateOverlayZOrder)(IDirectDrawSurfaceImpl*, DWORD, LPDIRECTDRAWSURFACE);
+    // IDirectDrawSurface2
+    HRESULT (__stdcall *GetDDInterface)(IDirectDrawSurfaceImpl*, LPVOID *);
+    HRESULT (__stdcall *PageLock)(IDirectDrawSurfaceImpl*, DWORD);
+    HRESULT (__stdcall *PageUnlock)(IDirectDrawSurfaceImpl*, DWORD);
+    // IDirectDrawSurface3
+    HRESULT (__stdcall *SetSurfaceDesc)(IDirectDrawSurfaceImpl*, LPDDSURFACEDESC, DWORD);
 } IDirectDrawSurfaceImplVtbl;
 
 
