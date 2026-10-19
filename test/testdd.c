@@ -141,7 +141,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
   }
   hr = IDirectDraw_SetDisplayMode(lpDD, SCREEN_WIDTH, SCREEN_HEIGHT, TEST_BPP);
   if (FAILED(hr)) {
-    DbgPrint("SetCooperativeLevel Failed, error = 0x%08lX", hr);
+    DbgPrint("SetDisplayMode Failed, error = 0x%08lX", hr);
     return CleanUp(1, hInst, hwnd, lpDD, NULL, NULL, NULL, NULL);
   }
 

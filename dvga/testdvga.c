@@ -80,6 +80,9 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
   }
   fclose(fp);
 
+  ((LPDWORD) data)[1] = SCREEN_PITCH;
+  ((LPDWORD) data)[2] = BMP_WIDTH*XPITCH;
+  ((LPDWORD) data)[3] = BMP_HEIGHT;
   for (y = 0; y < BMP_HEIGHT; y ++) {
     src = bmBits + (BMP_HEIGHT - 1 - y)*BMP_PITCH;
     dst = data + 16 + y*IMG_PITCH;
@@ -224,9 +227,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     // DbgPrint("Position: (%d, %d)\n", x, y);
     // Render
     ((LPDWORD) data)[0] = y*SCREEN_PITCH + x*XPITCH;
-    ((LPDWORD) data)[1] = SCREEN_PITCH;
-    ((LPDWORD) data)[2] = BMP_WIDTH*XPITCH;
-    ((LPDWORD) data)[3] = BMP_HEIGHT;
     if (WriteFile(hDVGA, data, sizeof(data), &written, NULL)) {
       // DbgPrint("Wrote %d bytes to (%d, %d)\n", written, x, y);
     } else {
