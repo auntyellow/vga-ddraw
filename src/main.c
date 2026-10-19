@@ -1602,6 +1602,9 @@ ULONG __stdcall ddraw_Release(IDirectDrawImpl *This)
             CloseHandle(This->render.hDPal);
             This->render.hDPal = INVALID_HANDLE_VALUE;
         }
+        if (This->render.lpDVGA) {
+            This->render.lpDVGA = NULL;
+        }
 
         if (This->render.hPalette)
         {
@@ -1714,6 +1717,8 @@ HRESULT WINAPI DirectDrawEnumerateA(LPDDENUMCALLBACK lpCallback, LPVOID lpContex
     return DD_OK;
 }
 
+extern LPVOID GetDVGAAddress();
+
 int stdout_open = 0;
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter) 
 {
@@ -1763,6 +1768,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
     if (This->render.hDVGA == INVALID_HANDLE_VALUE) {
         printf("Error %lu: Could not open device \\\\.\\DirectVGA. Make sure the driver is loaded.\n", GetLastError());
         This->render.hDPal = INVALID_HANDLE_VALUE;
+        This->render.lpDVGA = GetDVGAAddress();
     } else {
         This->render.hDPal = CreateFile("\\\\.\\DirectPalette", GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
         if (This->render.hDPal == INVALID_HANDLE_VALUE) {

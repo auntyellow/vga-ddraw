@@ -141,7 +141,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
   }
   hr = IDirectDraw_SetDisplayMode(lpDD, SCREEN_WIDTH, SCREEN_HEIGHT, TEST_BPP);
   if (FAILED(hr)) {
-    DbgPrint("SetCooperativeLevel Failed, error = 0x%08lX", hr);
+    DbgPrint("SetDisplayMode Failed, error = 0x%08lX", hr);
     return CleanUp(1, hInst, hwnd, lpDD, NULL, NULL, NULL, NULL);
   }
 
@@ -372,7 +372,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
 #ifdef DDS_FLIP
     IDirectDrawSurface_Flip(lpPrimary, NULL, DDFLIP_WAIT);
 #endif
-    Sleep(10);
+    Sleep(1);
   }
 
   IDirectDrawSurface_Unlock(lpImage, NULL);
@@ -383,7 +383,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     if (ShowCursor(TRUE) >= 0) {
       break;
     }
-    Sleep(1);
+    Sleep(10);
   }
   SetCursor(LoadCursor(NULL, IDC_ARROW));
   return CleanUp(0, hInst, hwnd, lpDD, lpPrimary, lpBackBuffer, lpImage, lpPalette);

@@ -1,0 +1,1 @@
+i686-w64-mingw32-gcc -O3 -Wall -s testdvga.c dvga9x.c -o testdvga.exe -lgdi32

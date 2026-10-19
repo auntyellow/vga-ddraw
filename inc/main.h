@@ -104,6 +104,7 @@ typedef struct IDirectDrawImpl
 
         HPALETTE hPalette;
         HANDLE hDVGA, hDPal;
+        LPVOID lpDVGA;
         DWORD winVer;
     } render;
 

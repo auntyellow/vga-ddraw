@@ -21,6 +21,8 @@
 #include "surface.h"
 // #include "opengl.h"
 
+extern void WritePalette(LPPALETTEENTRY, LONG);
+
 BOOL ShowDriverWarning;
 
 DWORD WINAPI render_soft_main(void)
@@ -102,6 +104,8 @@ DWORD WINAPI render_soft_main(void)
                         } else {
                             printf("Error %lu: Write palette failed\n", GetLastError());
                         }
+                    } else {
+                        WritePalette((LPPALETTEENTRY) ddraw->primary->palette->data_bgr, 256);
                     }
                     if (ddraw->render.winVer >= 5) {
                         RGBQUAD *rgb = ddraw->primary->palette->data_rgb;
@@ -184,7 +188,17 @@ DWORD WINAPI render_soft_main(void)
                     SRCCOPY);
             }
             */
-            if (ddraw->render.hDVGA == INVALID_HANDLE_VALUE) {
+            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE) {
+                DWORD written;
+                BOOL success = WriteFile(ddraw->render.hDVGA, ddraw->primary->surface, ddraw->height*ddraw->primary->lPitch, &written, NULL);
+                if (success) {
+                    // printf("Wrote %lu bytes\n", written);
+                } else {
+                    printf("Error %lu: Write failed\n", GetLastError());
+                }
+            } else if (ddraw->render.lpDVGA) {
+                memcpy(ddraw->render.lpDVGA, ddraw->primary->surface, ddraw->height*ddraw->primary->lPitch);
+            } else {
                 SetDIBitsToDevice(
                     ddraw->render.hDC, 
                     0, 
@@ -198,14 +212,6 @@ DWORD WINAPI render_soft_main(void)
                     ddraw->primary->surface, 
                     ddraw->primary->bmi, 
                     DIB_RGB_COLORS);
-            } else {
-                DWORD written;
-                BOOL success = WriteFile(ddraw->render.hDVGA, ddraw->primary->surface, ddraw->height*ddraw->primary->lPitch, &written, NULL);
-                if (success) {
-                    // printf("Wrote %lu bytes\n", written);
-                } else {
-                    printf("Error %lu: Write failed\n", GetLastError());
-                }
             }
         }
 
