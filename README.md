@@ -41,10 +41,14 @@ Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wr
 
 ## How to use
 
+- Download `vga-ddraw.7z/img/iso` from [latest release](https://github.com/auntyellow/vga-ddraw/releases/latest).
+- Extract `vga-ddraw.7z` or mount `vga-ddraw.img/iso`.
+
 ### WinNT
 
 - Under Windows 7 / XP / 2000 / ReactOS, run `install.bat` to install DirectVGA (`dvga.sys`) and DirectPalette (`dpal.sys`) drivers. 
 - Under Windows NT 4.0 / 3.51, move `install.bat` into `nt351` folder and run it.
+- Under Windows NT 3.51, copy `msvcrt.dll` from [Windows NT 4.0](https://winworldpc.com/product/windows-nt-40/40) into `system32` folder.
 - Put `ddraw.dll` into the same folder as the game executable file, or backup and overwrite system's `ddraw.dll`. 
 
 ### Win9x
