@@ -118,6 +118,7 @@ static void LoadRealDDraw()
 typedef struct WrappedDirectDraw {
     IDirectDrawVtbl *lpVtbl;
     LPDIRECTDRAW real;
+    BOOL bNormal;
     LONG ref;
 } WrappedDirectDraw;
 
@@ -324,7 +325,7 @@ HRESULT STDMETHODCALLTYPE DD_CreateSurface(WrappedDirectDraw *This, LPDDSURFACED
     real = NULL;
     bAttach = FALSE;
 #if defined(RA95_FLIP) || defined(RA95_BLTFAST)
-    if ((ddsd.dwFlags & DDSD_CAPS) && (ddsd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) && !(ddsd.ddsCaps.dwCaps & (DDSCAPS_FLIP | DDSCAPS_COMPLEX))) {
+    if (!This->bNormal && (ddsd.dwFlags & DDSD_CAPS) && (ddsd.ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE) && !(ddsd.ddsCaps.dwCaps & (DDSCAPS_FLIP | DDSCAPS_COMPLEX))) {
 #ifdef RA95_FLIP
         ddsd.dwFlags |= DDSD_BACKBUFFERCOUNT;
         ddsd.dwBackBufferCount = 1;
@@ -332,6 +333,9 @@ HRESULT STDMETHODCALLTYPE DD_CreateSurface(WrappedDirectDraw *This, LPDDSURFACED
 #endif
         bAttach = TRUE;
     }
+#endif
+#ifdef NO_VIDEOMEMORY
+    ddsd.ddsCaps.dwCaps &= ~DDSCAPS_VIDEOMEMORY;
 #endif
     hr = This->real->lpVtbl->CreateSurface(This->real, &ddsd, &real, iu);
     if (FAILED(hr)) {
@@ -346,7 +350,7 @@ HRESULT STDMETHODCALLTYPE DD_CreateSurface(WrappedDirectDraw *This, LPDDSURFACED
         ZeroMemory(&ddsCaps, sizeof(ddsCaps));
         ddsCaps.dwCaps = DDSCAPS_BACKBUFFER;
         hr = real->lpVtbl->GetAttachedSurface(real, &ddsCaps, &attached);
-        printf(("DD_CreateSurface: GetAttachedSurface returned 0x%08lX (use Flip)\n", hr));
+        printf(("DD_CreateSurface: GetAttachedSurface returned 0x%08lX (use Flip), attached=0x%p\n", hr, attached));
 #endif
 #ifdef RA95_BLTFAST
         ZeroMemory(&ddsd, sizeof(ddsd));
@@ -364,7 +368,7 @@ HRESULT STDMETHODCALLTYPE DD_CreateSurface(WrappedDirectDraw *This, LPDDSURFACED
             ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN;
             ddsd.dwBackBufferCount = 0;
             hr = This->real->lpVtbl->CreateSurface(This->real, &ddsd, &attached, NULL);
-            printf(("DD_CreateSurface: CreateSurface (attached) returned 0x%08lX (use BltFast)\n", hr));
+            printf(("DD_CreateSurface: CreateSurface (attached) returned 0x%08lX (use BltFast), attached=0x%p\n", hr, attached));
         }
 #endif
     }
@@ -552,6 +556,7 @@ HRESULT STDMETHODCALLTYPE DD_SetCooperativeLevel(WrappedDirectDraw *This, HWND h
     // HWND newHwnd = (dwFlags & DDSCL_NORMAL) && !hwnd ? GetForegroundWindow() : hwnd;
     HRESULT hr = This->real->lpVtbl->SetCooperativeLevel(This->real, hwnd, dwFlags);
     printf(("DD_SetCooperativeLevel: this=0x%p hwnd=0x%p flags=0x%08lX result=0x%08lX\n", This, hwnd, dwFlags, hr));
+    This->bNormal = (dwFlags & DDSCL_NORMAL) != 0;
     return hr;
 }
 
@@ -637,6 +642,7 @@ WrappedDirectDraw *WRAP_DirectDraw(LPDIRECTDRAW real, BOOL bDirectDraw2)
 
     w->lpVtbl = lpVtbl;
     w->real = real;
+    w->bNormal = FALSE;
     w->ref = 1;
     return w;
 }
@@ -678,7 +684,11 @@ HRESULT STDMETHODCALLTYPE Surf_QueryInterface(WrappedSurface *This, REFIID riid,
     printf(("Surf_QueryInterface: real_ref=%ld, wrapped_ref=%ld\n", This, nRef, This->ref));
     */
     if (SUCCEEDED(hr) && (IsEqualIID(riid, &IID_IDirectDrawSurface2) || IsEqualIID(riid, &IID_IDirectDrawSurface3))) {
-        WrappedSurface *pWrapped = WRAP_Surface((LPDIRECTDRAWSURFACE) *ppvObj, NULL, This->lpWrappedDD);
+        WrappedSurface *pWrapped;
+        if (This->attached) {
+            This->attached->lpVtbl->AddRef(This->attached);
+        }
+        pWrapped = WRAP_Surface((LPDIRECTDRAWSURFACE) *ppvObj, This->attached, This->lpWrappedDD);
         // This can fix ref deviation in cnc-ddraw 1.3.8.0
         // InterlockedIncrement(&This->ref);
         printf(("Surf_QueryInterface: new_real=0x%p, new_wrapped=0x%p\n", *ppvObj, pWrapped));
