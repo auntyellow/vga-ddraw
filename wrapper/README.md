@@ -61,18 +61,19 @@ The wrapper helps bypass the primary surface memory check and wraps the Lock/Unl
 
 | Game | VMPDisp9x | VBEMP 9x | VBEMP 9x + wrapper | VBEMP NT or WinXP | VBEMP NT or WinXP + wrapper |
 |-|-|-|-|-|-|
-| **RA95** | ✅<sup> [1]</sup> | ❌<sup> [2]</sup> | ✅<sup> [3]</sup> | ❌<sup> [2]</sup> | ✅<sup> [4]</sup> |
-| **StarCraft** | ✅ | ✅ | ✅<sup> [5,7]</sup> | ✅<sup> [6]</sup> | ✅<sup> [7]</sup> |
-| **NFS3** | ✅ | ❌<sup> [8]</sup> | ✅<sup> [9]</sup> | ❌<sup> [8]</sup> | ✅<sup> [4,9]</sup> |
+| **RA95** | ✅<sup> [1]</sup> | ❌<sup> [2]</sup> | ✅<sup> [4,8]</sup> | ❌<sup> [2]</sup> | ✅<sup> [9]</sup> |
+| **StarCraft** | ✅ | ✅ | ✅<sup> [5,6]</sup> | ✅<sup> [7]</sup> | ✅<sup> [6]</sup> |
+| **NFS3** | ✅ | ❌<sup> [3]</sup> | ✅<sup> [5,10]</sup> | ❌<sup> [3]</sup> | ✅<sup> [9,10]</sup> |
 
 Notes:
 
 1. Unstable for FunkyFr3sh's build in v86.
 2. Causes a fatal alert.
-3. Requires the `RA95_SKIP_CHECK` macro (`RA95_FLIP` and `RA95_BLTFAST` will be slower). Placing `ddraw.dll` into the `ra95.exe` directory usually fails because Windows 9x's `dsound.dll` relies on the `VidMem*` functions exported by `ddraw.dll`. As a workaround, rename `ddraw.dll` to `ddwrp.dll` and modify the Import Directory of `ra95.exe` using [CFF Explorer](https://ntcore.com/explorer-suite/).
-4. Requires the `RA95_FLIP` macro (smoother than `RA95_BLTFAST`).
-5. `StarCraft.exe` loads `ddraw.dll` dynamically, therefore the workaround described in Note 3 is not applicable here. As another workaround, rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, then compile the wrapper to load `ddra0.dll` and place `ddraw.dll` into `system` folder.
-6. Fallback to Blt.
-7. The wrapper is not strictly necessary here, but works fine.
-8. Quits silently.
-9. Requires the `NO_VIDEOMEMORY` macro.
+3. Quits silently.
+4. Placing `ddraw.dll` into the `ra95.exe` directory usually fails because Windows 9x's `dsound.dll` relies on the `VidMem*` functions exported by `ddraw.dll`. As a workaround, rename `ddraw.dll` to `ddwrp.dll` and modify the Import Directory of `ra95.exe` using [CFF Explorer](https://ntcore.com/explorer-suite/).
+5. The game loads `ddraw.dll` dynamically, therefore the above workaround is not applicable here. As another workaround, rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, then compile the wrapper to load `ddra0.dll` and place `ddraw.dll` into `system` folder.
+6. The wrapper is not strictly necessary here, but works fine.
+7. Falls back to Blt.
+8. Requires the `RA95_SKIP_CHECK` macro (`RA95_FLIP` and `RA95_BLTFAST` will be slower).
+9. Requires the `RA95_FLIP` macro (smoother than `RA95_BLTFAST`).
+10. Requires the `NO_VIDEOMEMORY` macro.
