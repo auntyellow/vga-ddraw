@@ -1443,7 +1443,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DWORD dwFlags)
 {
-    PIXELFORMATDESCRIPTOR pfd;
+    // PIXELFORMATDESCRIPTOR pfd;
 
     printf("DirectDraw::SetCooperativeLevel(This=%p, hWnd=0x%08X, dwFlags=0x%08X)\n", This, (unsigned int)hWnd, (unsigned int)dwFlags);
 
@@ -1477,6 +1477,10 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
         {
             This->render.hDC = GetDC(This->hWnd);
 
+            // SetPixelFormat / ChoosePixelFormat calls OpenGL then calls DirectDrawCreate, 
+            // which causes circular init if vga-ddraw's ddraw.dll is placed into system32 folder
+            // Removing this won't impact vga-ddraw because it doesn't use OpenGL
+            /*
             memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
             pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
             pfd.nVersion = 1;
@@ -1485,6 +1489,7 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
             pfd.cColorBits = ddraw->render.bpp ? ddraw->render.bpp : ddraw->mode.dmBitsPerPel;
             pfd.iLayerType = PFD_MAIN_PLANE;
             SetPixelFormat(This->render.hDC, ChoosePixelFormat(This->render.hDC, &pfd), &pfd);
+            */
         }
 
         /*

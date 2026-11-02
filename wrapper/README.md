@@ -71,7 +71,7 @@ Notes:
 2. Causes a fatal alert.
 3. Quits silently.
 4. Placing `ddraw.dll` into the `ra95.exe` directory usually fails because Windows 9x's `dsound.dll` relies on the `VidMem*` functions exported by `ddraw.dll`. As a workaround, rename `ddraw.dll` to `ddwrp.dll` and modify the Import Directory of `ra95.exe` using [CFF Explorer](https://ntcore.com/explorer-suite/).
-5. The game loads `ddraw.dll` dynamically, therefore the above workaround is not applicable here. As another workaround, rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, then compile the wrapper to load `ddra0.dll` and place `ddraw.dll` into `system` folder.
+5. The game still loads system's `ddraw.dll`, therefore the above workaround is not applicable here. As another workaround, rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, then compile the wrapper to load `ddra0.dll` and place `ddraw.dll` into `system` folder.
 6. The wrapper is not strictly necessary here, but works fine.
 7. Falls back to Blt.
 8. Requires the `RA95_SKIP_CHECK` macro (`RA95_FLIP` and `RA95_BLTFAST` will be slower).

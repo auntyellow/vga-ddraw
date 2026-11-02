@@ -48,15 +48,22 @@ Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wr
 
 - Under Windows 7 / XP / 2000 / ReactOS, run `install.bat` to install DirectVGA (`dvga.sys`) and DirectPalette (`dpal.sys`) drivers. 
 - Under Windows NT 4.0 / 3.51, move `install.bat` into `nt351` folder and run it.
-- Under Windows NT 3.51, copy `msvcrt.dll` from [Windows NT 4.0](https://winworldpc.com/product/windows-nt-40/40) into `system32` folder.
-- Put `ddraw.dll` into the same folder as the game executable file, or backup and overwrite system's `ddraw.dll`. 
+- Under Windows NT 3.51, copy `msvcrt.dll` from [Windows NT 4.0](https://winworldpc.com/product/windows-nt-40/40) into `system32` folder. In the Control Panel, set the display mode to match the game, then restart computer and launch the game (see [this issue](https://github.com/auntyellow/vga-ddraw/issues/1)).
+- Put `ddraw.dll` into the same folder as the game executable file, ~or backup and overwrite system's `ddraw.dll`~<sup> [1]</sup>.
 
 ### Win9x
 
 - **vga-ddraw** includes the built-in DirectVGA and DirectPalette for Win9x (won't be loaded if WinNT is detected), so no additional driver installation is required.
-- Win9x's `dsound.dll` relies on `VidMem*` functions in ddraw.dll, so replacing system's `ddraw.dll` will cause `dsound.dll` to fail to load. As a workaround, we need to rename `ddraw.dll` to `vdraw.dll` and modify the Import Directory of the game executable file using [CFF Explorer](https://ntcore.com/explorer-suite/).
-- If the game loads `ddraw.dll` dynamically like [NFS3](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm), we need to rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, and place vga-ddraw's `ddraw.dll` into `system` folder.
+- Most games rely on DirectSound, so we need to rename vga-ddraw's `ddraw.dll` to `vdraw.dll` and modify the Import Directory of the game executable file using [CFF Explorer](https://ntcore.com/explorer-suite/).<sup> [2,3]</sup>
+- If the game still loads system's `ddraw.dll` like [NFS3](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm), we need to rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, and place vga-ddraw's `ddraw.dll` into `system` folder.<sup> [3]</sup>
+- Under Windows 95, copy `msvcrt.dll` from Windows NT 4.0 into `system32` folder.
 - DirectPalette sets 6-bit VGA RGB palette to VGA ports 0x3c8 and 0x3c9, but VMDisp9x uses 8-bit by default. If VMDisp9x is installed, we should put `PAL6BITS.COM` into `windows` folder and `PAL6BITS.COM` will be called automatically during initialization.
+
+Notes
+
+1. Overwriting system's `ddraw.dll` works if `Set/ChoosePixelFormat` is removed in [SetCooperativeLevel](https://github.com/auntyellow/vga-ddraw/blob/master/src/main.c).
+2. Win9x's `dsound.dll` relies on `VidMem*` functions in `ddraw.dll`, so replacing system's `ddraw.dll` will block `dsound.dll`'s loading.
+3. This doesn't work if the game loads `ddraw.dll` by `LoadLibrary` (like StarCraft) under Windows 95. Windows 95's `LoadLibrary` raises ERROR_DLL_INIT_FAILED (1114) if the DLL is built by MinGW.
 
 ## Changes from `cnc-ddraw`
 
@@ -88,12 +95,12 @@ Why choose `cnc-ddraw` 1.3.4.0?
 
 ### DirectDraw
 
-- Install mingw32 (`sudo apt install gcc-mingw-w64-i686`)
+- Install MinGW (`sudo apt install gcc-mingw-w64-i686`)
 - Run `makefile.bat` or `makefile.sh`
 
 ### Tests
 
-- Install MSVC 6.0 (Visual Studio 6.0) or mingw32 (`sudo apt install gcc-mingw-w64-i686`)
+- Install MSVC 6.0 (Visual Studio 6.0) or MinGW (`sudo apt install gcc-mingw-w64-i686`)
 - Run `dvga\maketest.bat`, `dvga9x\maketest.bat`, `test\makefile.bat` or `dvga/maketest.sh`, `dvga9x/maketest.sh`, `test/makefile.sh`
 
 ## ddraw-wrapper
