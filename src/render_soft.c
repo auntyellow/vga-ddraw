@@ -111,7 +111,8 @@ DWORD WINAPI render_soft_main(void)
                         RGBQUAD *rgb = ddraw->primary->palette->data_rgb;
                         if (ddraw->render.hPalette) {
                             PALETTEENTRY pe[256];
-                            for (int i = 0; i < 256; i++) {
+                            int i;
+                            for (i = 0; i < 256; i++) {
                                 pe[i].peRed = rgb[i].rgbRed;
                                 pe[i].peGreen = rgb[i].rgbGreen;
                                 pe[i].peBlue = rgb[i].rgbBlue;
@@ -123,7 +124,8 @@ DWORD WINAPI render_soft_main(void)
                             pLogPal->palVersion = 0x300;
                             pLogPal->palNumEntries = 256;
                             PALETTEENTRY *pe = pLogPal->palPalEntry;
-                            for (int i = 0; i < 256; i++) {
+                            int i;
+                            for (i = 0; i < 256; i++) {
                                 pe[i].peRed = rgb[i].rgbRed;
                                 pe[i].peGreen = rgb[i].rgbGreen;
                                 pe[i].peBlue = rgb[i].rgbBlue;

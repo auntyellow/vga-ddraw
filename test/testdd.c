@@ -17,9 +17,9 @@ void DbgPrint(const char *format, ...) {
   va_start(args, format);
   i = _vsnprintf(buffer, sizeof(buffer), format, args);
   buffer[i < 0 ? sizeof(buffer) - 1 : i] = '\0';
-  OutputDebugStringA(buffer);
+  // OutputDebugStringA(buffer);
   // TODO write into file under Win9x
-  // MessageBoxA(NULL, buffer, "DirectDraw Test", MB_ICONEXCLAMATION);
+  MessageBoxA(NULL, buffer, "DirectDraw Test", MB_ICONEXCLAMATION);
   va_end(args);
 }
 
