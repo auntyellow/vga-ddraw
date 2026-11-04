@@ -29,6 +29,19 @@
 #include "clipper.h"
 // #include "render_d3d9.h"
 
+#ifndef WM_XBUTTONDOWN
+#define WM_XBUTTONDOWN   0x020B
+#endif
+#ifndef WM_XBUTTONUP
+#define WM_XBUTTONUP     0x020C
+#endif
+#ifndef WM_XBUTTONDBLCLK
+#define WM_XBUTTONDBLCLK 0x020D
+#endif
+#ifndef DMDFO_DEFAULT
+#define DMDFO_DEFAULT    0
+#endif
+
 #define IDR_MYMENU 93
 
 BOOL WINAPI fake_GetCursorPos(LPPOINT lpPoint);
@@ -37,7 +50,7 @@ void mouse_lock();
 void mouse_unlock();
 
 /* screenshot.c removed */
-BOOL screenshot(struct IDirectDrawSurfaceImpl *)
+BOOL screenshot(struct IDirectDrawSurfaceImpl *lpDDSurface)
 {
     return TRUE;
 }
@@ -1443,7 +1456,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DWORD dwFlags)
 {
-    // PIXELFORMATDESCRIPTOR pfd;
+    PIXELFORMATDESCRIPTOR pfd;
 
     printf("DirectDraw::SetCooperativeLevel(This=%p, hWnd=0x%08X, dwFlags=0x%08X)\n", This, (unsigned int)hWnd, (unsigned int)dwFlags);
 
@@ -1477,10 +1490,6 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
         {
             This->render.hDC = GetDC(This->hWnd);
 
-            // SetPixelFormat / ChoosePixelFormat calls OpenGL then calls DirectDrawCreate, 
-            // which causes circular init if vga-ddraw's ddraw.dll is placed into system32 folder
-            // Removing this won't impact vga-ddraw because it doesn't use OpenGL
-            /*
             memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
             pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
             pfd.nVersion = 1;
@@ -1489,7 +1498,6 @@ HRESULT __stdcall ddraw_SetCooperativeLevel(IDirectDrawImpl *This, HWND hWnd, DW
             pfd.cColorBits = ddraw->render.bpp ? ddraw->render.bpp : ddraw->mode.dmBitsPerPel;
             pfd.iLayerType = PFD_MAIN_PLANE;
             SetPixelFormat(This->render.hDC, ChoosePixelFormat(This->render.hDC, &pfd), &pfd);
-            */
         }
 
         /*
@@ -1740,12 +1748,15 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 
     if(ddraw)
     {
+        // avoid circular init if vga-ddraw's ddraw.dll is placed into system32 folder
         /* FIXME: check the calling module before passing the call! */
+        /*
         if (ddraw->DirectDrawCreate)
             return ddraw->DirectDrawCreate(lpGUID, lplpDD, pUnkOuter);
+        */
 
         return DDERR_DIRECTDRAWALREADYCREATED;
-    } 
+    }
 
     IDirectDrawImpl *This = (IDirectDrawImpl *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(IDirectDrawImpl));
     This->lpVtbl = &iface;
@@ -1756,6 +1767,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
 
     ddraw = This;
 
+    /*
     if (!This->real_dll)
         This->real_dll = LoadLibrary("system32\\ddraw.dll");
 
@@ -1764,6 +1776,7 @@ HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnk
         This->DirectDrawCreate =
             (HRESULT(WINAPI *)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*))GetProcAddress(This->real_dll, "DirectDrawCreate");
     }
+    */
 
     InitializeCriticalSection(&This->cs);
     This->render.ev = CreateEvent(NULL, TRUE, FALSE, NULL);

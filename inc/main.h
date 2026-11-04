@@ -71,10 +71,10 @@ typedef struct IDirectDrawImpl
     DEVMODE mode;
     struct IDirectDrawSurfaceImpl *primary;
     char title[128];
-    HMODULE real_dll;
+    // HMODULE real_dll;
 
     /* real export from system32\ddraw.dll */
-    HRESULT (WINAPI *DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*);
+    // HRESULT (WINAPI *DirectDrawCreate)(GUID FAR*, LPDIRECTDRAW FAR*, IUnknown FAR*);
     CRITICAL_SECTION cs;
 
     struct

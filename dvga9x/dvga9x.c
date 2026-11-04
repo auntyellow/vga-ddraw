@@ -184,22 +184,15 @@ LPVOID GetDVGAAddress() {
     }
 #else
     __asm__ __volatile__ (
-        "movw %0, %%bx\n\t"
-        "movw %1, %%cx\n\t"
         "movw $0x20, %%si\n\t"
         "movw $0, %%di\n\t"
         :
-        : "m" (wbx), "m" (wcx)
-        : "bx", "cx", "si", "di"
+        : "b" (wbx), "c" (wcx)
     );
     pVxDCall(0x2A0029, 0x800, dwAddr);
     __asm__ __volatile__ (
-        "setcb %0\n\t"
-        "movw %%ax, %1\n\t"
-        "movw %%bx, %2\n\t"
-        "movw %%cx, %3\n\t"
-        : "=m" (bcf), "=m" (wax), "=m" (wbx), "=m" (wcx)
-        :
+        "setcb %%dl\n\t"
+        : "=d" (bcf), "=a" (wax), "=b" (wbx), "=c" (wcx)
         :
     );
 #endif

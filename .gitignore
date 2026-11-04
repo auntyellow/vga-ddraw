@@ -1,10 +1,6 @@
-/.project
 ddraw.dll
 ddraw.ini
-dvga/dvga.sys
-dvga/dvga2.sys
-dvga/dpal.sys
-dvga/testdvga.exe
-dvga9x/testdvga.exe
-test/testdd.exe
-test/dbgview.exe
+*.exe
+/.project
+/inc_vc98/
+/dvga/*.sys

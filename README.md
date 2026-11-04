@@ -61,9 +61,9 @@ Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wr
 
 Notes
 
-1. Overwriting system's `ddraw.dll` works if `Set/ChoosePixelFormat` is removed in [SetCooperativeLevel](https://github.com/auntyellow/vga-ddraw/blob/master/src/main.c).
+1. Overwriting system's `ddraw.dll` works if circular init is removed in [DirectDrawCreate](https://github.com/auntyellow/vga-ddraw/blob/master/src/main.c).
 2. Win9x's `dsound.dll` relies on `VidMem*` functions in `ddraw.dll`, so replacing system's `ddraw.dll` will block `dsound.dll`'s loading.
-3. This doesn't work if the game loads `ddraw.dll` by `LoadLibrary` (like StarCraft) under Windows 95. Windows 95's `LoadLibrary` raises ERROR_DLL_INIT_FAILED (1114) if the DLL is built by MinGW.
+3. If the game loads `ddraw.dll` by `LoadLibrary` (like StarCraft) under Windows 95, `LoadLibrary` raises ERROR_DLL_INIT_FAILED (1114) because MinGW generates TLS (thread local storage) directory in DLL. To avoid this, `ddraw.dll` should be built by a very old version of MinGW such as tdm-mingw-1.8. See [Microsoft KB118816](https://ftp.zx.net.nz/pub/Patches/ftp.microsoft.com/MISC/KB/en-us/118/816.HTM) for more details.
 
 ## Changes from `cnc-ddraw`
 
@@ -97,6 +97,14 @@ Why choose `cnc-ddraw` 1.3.4.0?
 
 - Install MinGW (`sudo apt install gcc-mingw-w64-i686`)
 - Run `makefile.bat` or `makefile.sh`
+
+### DirectDraw without TLS Directory
+
+For some games loading `ddraw.dll` by `LoadLibrary` (like StarCraft), this can avoid ERROR_DLL_INIT_FAILED (1114) under Windows 95:
+
+- Install [tdm-mingw-1.8](https://sourceforge.net/projects/tdm-gcc/files/OldFiles/)
+- Copy `ddraw.h` and `dinput.h` from MSVC into `inc_vc98` folder
+- Run `makefile.bat`
 
 ### Tests
 
