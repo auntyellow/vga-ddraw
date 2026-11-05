@@ -1419,7 +1419,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_PAINT:
         {
-            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE) {
+            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE || ddraw->render.lpDVGA) {
                 PAINTSTRUCT ps;
                 BeginPaint(hWnd, &ps);
                 EndPaint(hWnd, &ps);
@@ -1439,7 +1439,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_ERASEBKGND:
         {
-            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE) {
+            if (ddraw->render.hDVGA != INVALID_HANDLE_VALUE || ddraw->render.lpDVGA) {
                 printf("Skip WM_ERASEBKGND\n");
                 return TRUE;
             }
