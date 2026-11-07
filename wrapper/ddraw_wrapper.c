@@ -735,7 +735,7 @@ HRESULT STDMETHODCALLTYPE Surf_AddOverlayDirtyRect(WrappedSurface *This, LPRECT 
 HRESULT STDMETHODCALLTYPE Surf_Blt(WrappedSurface *This, LPRECT lpDstRect, WrappedSurface *wrappedSrc, LPRECT lpSrcRect, DWORD dwFlags, LPDDBLTFX lpBltFx)
 {
     char szDstRect[RECT_STRLEN], szSrcRect[RECT_STRLEN];
-    HRESULT hr = This->real->lpVtbl->Blt(This->real, lpDstRect, wrappedSrc->real, lpSrcRect, dwFlags, lpBltFx);
+    HRESULT hr = This->real->lpVtbl->Blt(This->real, lpDstRect, wrappedSrc ? wrappedSrc->real : NULL, lpSrcRect, dwFlags, lpBltFx);
     dump_rect(szDstRect, lpDstRect);
     dump_rect(szSrcRect, lpSrcRect);
     printf(("Surf_Blt: this=0x%p dst_rect=%s src_wrapped=0x%p src_rect=%s flags=0x%08lX bltfx=0x%p result=0x%08lX\n", This, szDstRect, wrappedSrc, szSrcRect, dwFlags, lpBltFx, hr));
@@ -744,17 +744,18 @@ HRESULT STDMETHODCALLTYPE Surf_Blt(WrappedSurface *This, LPRECT lpDstRect, Wrapp
 
 HRESULT STDMETHODCALLTYPE Surf_BltBatch(WrappedSurface *This, LPDDBLTBATCH lpBatch, DWORD dwCount, DWORD dwFlags)
 {
+    // TODO: unwrap lpBatch. cnc-ddraw hasn't implemented this
     HRESULT hr = This->real->lpVtbl->BltBatch(This->real, lpBatch, dwCount, dwFlags);
     printf(("Surf_BltBatch: this=0x%p batch=0x%p count=%lu flags=0x%08lX result=0x%08lX\n", This, lpBatch, dwCount, dwFlags, hr));
     return hr;
 }
 
-HRESULT STDMETHODCALLTYPE Surf_BltFast(WrappedSurface *This, DWORD x, DWORD y, WrappedSurface *src, LPRECT lpRect, DWORD dwFlags)
+HRESULT STDMETHODCALLTYPE Surf_BltFast(WrappedSurface *This, DWORD x, DWORD y, WrappedSurface *wrappedSrc, LPRECT lpRect, DWORD dwFlags)
 {
     char szRect[RECT_STRLEN];
-    HRESULT hr = This->real->lpVtbl->BltFast(This->real, x, y, src->real, lpRect, dwFlags);
+    HRESULT hr = This->real->lpVtbl->BltFast(This->real, x, y, wrappedSrc ? wrappedSrc->real : NULL, lpRect, dwFlags);
     dump_rect(szRect, lpRect);
-    printf(("Surf_BltFast: this=0x%p x=%lu y=%lu src_wrapped=0x%p src_rect=0x%p flags=0x%08lX result=0x%08lX\n", This, x, y, src, szRect, dwFlags, hr));
+    printf(("Surf_BltFast: this=0x%p x=%lu y=%lu src_wrapped=0x%p src_rect=0x%p flags=0x%08lX result=0x%08lX\n", This, x, y, wrappedSrc, szRect, dwFlags, hr));
     return hr;
 }
 
