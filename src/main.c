@@ -1730,7 +1730,7 @@ HRESULT WINAPI DirectDrawEnumerateA(LPDDENUMCALLBACK lpCallback, LPVOID lpContex
     return DD_OK;
 }
 
-extern LPVOID GetDVGAAddress();
+extern LPVOID GetDVGAAddress(void);
 
 int stdout_open = 0;
 HRESULT WINAPI DirectDrawCreate(GUID FAR* lpGUID, LPDIRECTDRAW FAR* lplpDD, IUnknown FAR* pUnkOuter) 

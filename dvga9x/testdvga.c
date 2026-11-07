@@ -12,7 +12,7 @@
 #define SCREEN_PITCH PITCH(SCREEN_WIDTH*XPITCH)
 #define _256_TO_6(x) (((x) + 25)/51)
 
-extern LPVOID GetDVGAAddress();
+extern LPVOID GetDVGAAddress(void);
 extern void WritePalette(LPPALETTEENTRY, LONG);
 
 void DbgPrint(const char *format, ...) {

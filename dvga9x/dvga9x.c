@@ -84,7 +84,7 @@ typedef struct tagDIOCRegs {
 } DIOC_REGISTERS, *PDIOC_REGISTERS;
 */
 
-LPVOID GetDVGAAddress() {
+LPVOID GetDVGAAddress(void) {
     DWORD bus, slot, func, vendorId, baseClass, bar0, dwAddr;
     /*
     HANDLE hVWin32;
