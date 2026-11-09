@@ -2,6 +2,19 @@
 
 A DirectDraw API re-implementation for smooth 2D gaming under standard VGA drivers in QEMU, v86, and other emulators.
 
+## Use case
+
+This project targets legacy Windows gaming environments where the guest system exposes the VGA linear frame buffer. It helps DirectDraw-based games run more smoothly inside emulators and virtual machines that do not provide modern GPU acceleration.
+
+The following demos were tested under [Windows NT 3.51](https://winworldpc.com/product/windows-nt-3x/351) or [Windows 95](https://winworldpc.com/product/windows-95/rtm) using the [v86 emulator](https://github.com/copy/v86):
+
+- [C&C Red Alert (RA95) Demo](https://www.chess-wizard.com/minigames/minigame_ra95demo.htm)
+- [StarCraft Shareware](https://www.chess-wizard.com/minigames/minigame_scdemo.htm)
+- [Need for Speed III Demo](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm)
+- [Commandos Demo](https://www.chess-wizard.com/minigames/minigame_commandos_demo.htm)
+
+Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wrapper](wrapper/README.md) and [VMDisp9x](https://github.com/JHRobotics/vmdisp9x) are alternative solutions.
+
 ## Overview
 
 - Based on FunkyFr3sh's [cnc-ddraw 1.3.4.0](https://github.com/FunkyFr3sh/cnc-ddraw/tree/1.3.4.0).
@@ -9,7 +22,7 @@ A DirectDraw API re-implementation for smooth 2D gaming under standard VGA drive
 
 ## Performance
 
-When running the [v86 emulator](https://github.com/copy/v86) in a modern browser on a very old computer (e.g. 4th-gen Core i5), vga-ddraw easily reaches 900+ FPS (5~10x of cnc-ddraw's soft renderer).
+When running the v86 emulator in a modern browser on a very old computer (e.g. 4th-gen Core i5), vga-ddraw easily reaches 900+ FPS (5~10x of cnc-ddraw's soft renderer).
 
 ## Supported platforms
 
@@ -27,18 +40,6 @@ Notes:
 3. `msvcrt.dll` (from Windows NT 4.0) is required.
 4. No additional driver installation is required because of the built-in DirectVGA and DirectPalette for Win9x.
 
-## Use case
-
-This project targets legacy Windows gaming environments where the guest system exposes the VGA linear frame buffer. It helps DirectDraw-based games run more smoothly inside emulators and virtual machines that do not provide modern GPU acceleration.
-
-The following demos were tested under [Windows NT 3.51](https://winworldpc.com/product/windows-nt-3x/351) or [Windows 95](https://winworldpc.com/product/windows-95/rtm) using the v86 emulator:
-
-- [C&C Red Alert (RA95) Demo](https://www.chess-wizard.com/minigames/minigame_ra95demo.htm)
-- [StarCraft Shareware](https://www.chess-wizard.com/minigames/minigame_scdemo.htm)
-- [Need for Speed III Demo](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm)
-
-Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wrapper](wrapper/README.md) and [VMDisp9x](https://github.com/JHRobotics/vmdisp9x) are alternative solutions.
-
 ## How to use
 
 - Download `vga-ddraw.7z/img/iso` from [latest release](https://github.com/auntyellow/vga-ddraw/releases/latest).
@@ -49,21 +50,20 @@ Note that **vga-ddraw** is not the only way to run these games in v86. [ddraw-wr
 - Under Windows 7 / XP / 2000 / ReactOS, run `install.bat` to install DirectVGA (`dvga.sys`) and DirectPalette (`dpal.sys`) drivers. 
 - Under Windows NT 4.0 / 3.51, move `install.bat` into `nt351` folder and run it.
 - Under Windows NT 3.51, copy `msvcrt.dll` from [Windows NT 4.0](https://winworldpc.com/product/windows-nt-40/40) into `system32` folder. In the Control Panel, set the display mode to match the game, then restart computer and launch the game (see [this issue](https://github.com/auntyellow/vga-ddraw/issues/1)).
-- Put `ddraw.dll` into the same folder as the game executable file, ~or backup and overwrite system's `ddraw.dll`~<sup> [1]</sup>.
+- Put `ddraw.dll` into the same folder as the game executable file, or backup and overwrite system's `ddraw.dll`.
 
 ### Win9x
 
 - **vga-ddraw** includes the built-in DirectVGA and DirectPalette for Win9x (won't be loaded if WinNT is detected), so no additional driver installation is required.
-- Most games rely on DirectSound, so we need to rename vga-ddraw's `ddraw.dll` to `vdraw.dll` and modify the Import Directory of the game executable file using [CFF Explorer](https://ntcore.com/explorer-suite/).<sup> [2,3]</sup>
-- If the game still loads system's `ddraw.dll` like [NFS3](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm), we need to rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, and place vga-ddraw's `ddraw.dll` into `system` folder.<sup> [3]</sup>
-- Under Windows 95, copy `msvcrt.dll` from Windows NT 4.0 into `system32` folder.
+- Most games rely on DirectSound, so we need to rename vga-ddraw's `ddraw.dll` to `vdraw.dll` and modify the Import Directory of the game executable file using [CFF Explorer](https://ntcore.com/explorer-suite/).<sup> [1,2]</sup>
+- If the game still loads system's `ddraw.dll` like [NFS3](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm), we need to rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, and place vga-ddraw's `ddraw.dll` into `system` folder.<sup> [2]</sup>
+- Under Windows 95, copy `msvcrt.dll` from Windows NT 4.0 into `system` folder.
 - DirectPalette sets 6-bit VGA RGB palette to VGA ports 0x3c8 and 0x3c9, but VMDisp9x uses 8-bit by default. If VMDisp9x is installed, we should put `PAL6BITS.COM` into `windows` folder and `PAL6BITS.COM` will be called automatically during initialization.
 
 Notes
 
-1. Overwriting system's `ddraw.dll` works if circular init is removed in [DirectDrawCreate](https://github.com/auntyellow/vga-ddraw/blob/master/src/main.c).
-2. Win9x's `dsound.dll` relies on `VidMem*` functions in `ddraw.dll`, so replacing system's `ddraw.dll` will block `dsound.dll`'s loading.
-3. If the game loads `ddraw.dll` by `LoadLibrary` (like StarCraft) under Windows 95, `LoadLibrary` raises ERROR_DLL_INIT_FAILED (1114) because MinGW generates TLS (thread local storage) directory in DLL. To avoid this, `ddraw.dll` should be built by a very old version of MinGW such as tdm-mingw-1.8. See [Microsoft KB118816](https://ftp.zx.net.nz/pub/Patches/ftp.microsoft.com/MISC/KB/en-us/118/816.HTM) for more details.
+1. Win9x's `dsound.dll` relies on `VidMem*` functions in `ddraw.dll`, so replacing system's `ddraw.dll` will block `dsound.dll`'s loading.
+2. If the game loads `ddraw.dll` by `LoadLibrary` (like StarCraft) under Windows 95, `LoadLibrary` raises ERROR_DLL_INIT_FAILED (1114) because MinGW generates TLS (thread local storage) directory in DLL. To avoid this, `ddraw.dll` should be built by a very old version of MinGW such as tdm-mingw-1.8. See [Microsoft KB118816](https://ftp.zx.net.nz/pub/Patches/ftp.microsoft.com/MISC/KB/en-us/118/816.HTM) for more details.
 
 ## Changes from `cnc-ddraw`
 
