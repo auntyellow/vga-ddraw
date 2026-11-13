@@ -1,1 +1,1 @@
-i686-w64-mingw32-gcc -DDEBUG=1 -O3 -Wall -s testdvga.c dvga9x.c -mwindows -o testdvga9x.exe -lgdi32
+i686-w64-mingw32-gcc -D_DEBUG=1 -O3 -Wall -s testdvga.c dvga9x.c -mwindows -o testdvga9x.exe -lgdi32

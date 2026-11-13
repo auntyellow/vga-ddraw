@@ -3,14 +3,14 @@
 #include <conio.h>
 #include <io.h>
 
-#if DEBUG
+#if _DEBUG
 
-#define printf(x) DebugPrint x
+#define printf(x) DebugPrint9x x
 
 static FILE *fpDebug = NULL;
 static int fdDebug = -1;
 
-void DebugPrint(const char *format, ...)
+void DebugPrint9x(const char *format, ...)
 {
     va_list args;
     char buffer[1024];
@@ -57,7 +57,7 @@ static BOOL IsWin9x() {
         nIsWin9x = -1;
         return FALSE;
     }
-#if DEBUG
+#if _DEBUG
     fpDebug = fopen("dvga9x.log", "wt");
     // enable fdDebug for hard lockup
     // fdDebug = _fileno(fpDebug);
