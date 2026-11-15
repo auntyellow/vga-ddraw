@@ -191,8 +191,8 @@ LPVOID GetDVGAAddress(void) {
     );
     pVxDCall(0x2A0029, 0x800, dwAddr);
     __asm__ __volatile__ (
-        "setcb %%dl\n\t"
-        : "=d" (bcf), "=a" (wax), "=b" (wbx), "=c" (wcx)
+        "setcb %0\n\t"
+        : "=m" (bcf), "=a" (wax), "=b" (wbx), "=c" (wcx)
         :
     );
 #endif
