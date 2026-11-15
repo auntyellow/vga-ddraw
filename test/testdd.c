@@ -310,7 +310,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     }
   }
 
-  // IDirectDrawSurface_Unlock(lpImage, NULL);
+  IDirectDrawSurface_Unlock(lpImage, NULL);
 
   x = 0;
   y = 0;
@@ -370,7 +370,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     }
 
 #ifdef DDS_FLIP
-    // doesn't look to work with Win9x's ddraw.dll: returns S_OK but surface isn't rendered.
     hr = IDirectDrawSurface_Flip(lpPrimary, NULL, DDFLIP_WAIT);
     if (FAILED(hr)) {
       DbgPrint("Flip Failed, error = 0x%08lX", hr);
