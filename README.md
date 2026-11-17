@@ -58,7 +58,6 @@ Notes:
 - Most games rely on DirectSound, so we need to rename vga-ddraw's `ddraw.dll` to `vdraw.dll` and modify the Import Directory of the game executable file using [CFF Explorer](https://ntcore.com/explorer-suite/).<sup> [1,2]</sup>
 - If the game still loads system's `ddraw.dll` like [NFS3](http://www.chess-wizard.com/minigames/minigame_nfs3demo.htm), we need to rename system's `ddraw.dll` to `ddra0.dll` and modify the Import Directory of `dsound.dll`, and place vga-ddraw's `ddraw.dll` into `system` folder.<sup> [2]</sup>
 - Under Windows 95, copy `msvcrt.dll` from Windows NT 4.0 into `system` folder.
-- DirectPalette sets 6-bit VGA RGB palette to VGA ports 0x3c8 and 0x3c9, but VMDisp9x uses 8-bit by default. If VMDisp9x is installed, we should put `PAL6BITS.COM` into `windows` folder and `PAL6BITS.COM` will be called automatically during initialization.
 
 Notes
 
