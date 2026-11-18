@@ -207,7 +207,7 @@ static BOOL IsAvailable() {
     );
 #endif
     if (bcf) {
-        printf(("Failed to call _MapPhysToLinear, error = %04X", wax));
+        printf(("Failed to call _MapPhysToLinear, error = 0x%04X", wax));
         dwDVGAAddress = DVGA_ADDR_UNAVAILABLE;
         return FALSE;
     }
@@ -250,7 +250,7 @@ static BOOL IsAvailable() {
     );
 #endif
     if (bcf) {
-        printf(("Failed to simulate int 10h, error = %04X", wax));
+        printf(("Failed to simulate int 10h, error = 0x%04X", wax));
         // Ignore
     }
 
