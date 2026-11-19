@@ -40,10 +40,12 @@ void DebugPrint9x(const char *format, ...)
 
 typedef DWORD (__stdcall *PFN_VXDCALL)(DWORD, DWORD, DWORD);
 
+#pragma pack(2)
 typedef struct {
     DWORD edi, esi, ebp, dwReserved, ebx, edx, ecx, eax;
     WORD wFlags, es, ds, fs, gs, ip, cs, sp, ss;
 } DPMI_REG_REC;
+#pragma pack()
 
 /*
 typedef struct tagDIOCRegs {
