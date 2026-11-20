@@ -26,12 +26,13 @@ When running the v86 emulator in a modern browser on a very old computer (e.g. 4
 
 ## Supported platforms
 
-- Windows 7 (32-bit only)
+- Windows Vista / 7 (32-bit only)
 - Windows 2000 / XP
 - ReactOS<sup> [2]</sup>
 - Windows NT 4.0<sup> [2]</sup>
 - Windows NT 3.51<sup> [2,3]</sup> 
-- Windows 95 / 98 / ME<sup> [4]</sup>
+- Windows 98 / ME<sup> [4]</sup>
+- Windows 95<sup> [3,4]</sup>
 
 Notes:
 

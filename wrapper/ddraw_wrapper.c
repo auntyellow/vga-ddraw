@@ -553,7 +553,6 @@ HRESULT STDMETHODCALLTYPE DD_RestoreDisplayMode(WrappedDirectDraw *This)
 
 HRESULT STDMETHODCALLTYPE DD_SetCooperativeLevel(WrappedDirectDraw *This, HWND hwnd, DWORD dwFlags)
 {
-    // HWND newHwnd = (dwFlags & DDSCL_NORMAL) && !hwnd ? GetForegroundWindow() : hwnd;
     HRESULT hr = This->real->lpVtbl->SetCooperativeLevel(This->real, hwnd, dwFlags);
     printf(("DD_SetCooperativeLevel: this=0x%p hwnd=0x%p flags=0x%08lX result=0x%08lX\n", This, hwnd, dwFlags, hr));
     This->bNormal = (dwFlags & DDSCL_NORMAL) != 0;
