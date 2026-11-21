@@ -48,7 +48,7 @@ Notes:
 
 ### WinNT
 
-- Under Windows 7 / XP / 2000 / ReactOS, run `install.bat` to install DirectVGA (`dvga.sys`) and DirectPalette (`dpal.sys`) drivers. 
+- Under Windows 7 / Vista / XP / 2000 / ReactOS, run `install.bat` to install DirectVGA (`dvga.sys`) and DirectPalette (`dpal.sys`) drivers.
 - Under Windows NT 4.0 / 3.51, move `install.bat` into `nt351` folder and run it.
 - Under Windows NT 3.51, copy `msvcrt.dll` from [Windows NT 4.0](https://winworldpc.com/product/windows-nt-40/40) into `system32` folder. In the Control Panel, set the display mode to match the game, then restart computer and launch the game (see [this issue](https://github.com/auntyellow/vga-ddraw/issues/1)).
 - Put `ddraw.dll` into the same folder as the game executable file, or backup and overwrite system's `ddraw.dll`.

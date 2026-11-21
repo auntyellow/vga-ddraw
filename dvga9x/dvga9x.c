@@ -224,7 +224,7 @@ static BOOL IsAvailable() {
     __asm {
         mov bx, 0x10;
         mov cx, 0;
-        push ds;
+        push ss;
         pop es;
         lea edi, drr;
     }
@@ -237,7 +237,7 @@ static BOOL IsAvailable() {
     __asm__ __volatile__ (
         "movw $0x10, %%bx\n\t"
         "movw $0, %%cx\n\t"
-        "push %%ds\n\t"
+        "push %%ss\n\t"
         "pop %%es\n\t"
         "leal %[src], %%edi\n\t"
         :
